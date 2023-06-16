@@ -1,71 +1,38 @@
-:orphan:
-
-.. _examples-index:
-
-Examples
-========
 
 
+MoPANDA - Modular Petrophysical Analysis and Data Analysis tool
+===============================================================
 
-.. raw:: html
+.. |License| image:: https://img.shields.io/badge/license-MIT-blue.svg
 
-    <div class="sphx-glr-thumbcontainer" tooltip="This example shows the full petrophysical workflow avaiable in PetroPy for a single wolfcamp la...">
+.. _lasio: https://github.com/kinverarity1/lasio
+.. _PetroPy: https://github.com/toddheitmann/petropy
+.. _welly: https://github.com/agilescientific/welly
+.. _PfEFFER: https://www.kgs.ku.edu/software/PfEFFER-java/index.html
+.. _GEMINI: https://www.kgs.ku.edu/Gemini/Tools/Tools.html
+|License|
 
-.. only:: html
+A petrophysics with python package allowing scientific python computing of conventional and unconventional formation evaluation. Includes a petrophysical workflow and a log viewer based on XML templates. 
 
-    .. figure:: /auto_examples/images/thumb/sphx_glr_wolfcamp_single_thumb.png
+This project is based on multiple opensource packages:
 
-        :ref:`sphx_glr_auto_examples_wolfcamp_single.py`
-
-.. raw:: html
-
-    </div>
-
-
-.. toctree::
-   :hidden:
-
-   /auto_examples/wolfcamp_single
-
-.. raw:: html
-
-    <div class="sphx-glr-thumbcontainer" tooltip="This example shows the full petrophysical workflow avaiable in PetroPy for a folder of wolfcamp...">
-
-.. only:: html
-
-    .. figure:: /auto_examples/images/thumb/sphx_glr_wolfcamp_bulk_thumb.png
-
-        :ref:`sphx_glr_auto_examples_wolfcamp_bulk.py`
-
-.. raw:: html
-
-    </div>
+-  lasio_: .LAS file reading and writing. lasio_ also provides standard output data structure across many petrophysical data processing softwares (welly_, PetroPy_...)
+-  PetroPy_: Funcdation of this project but sadly it's no longer updated and supported. MoPanda harvests the reservoir fluid property and multimineral model functions from PetroPy_.
+-  PfEFFER_ by KGS: PfEFFER_ is part of the KGS GEMINI_ project (currently finished development with no technical support) which created a complex petrophysical and geological processing software based on Java. It allows the geologist to seamlessly integrate databases and geological analytical tools across the web. Analytical tools were designed for the independent oil and gas operators, consultants, and widely separated team members within and outside companies.
 
 
-.. toctree::
-   :hidden:
+************
+Requirements
+************
 
-   /auto_examples/wolfcamp_bulk
-.. raw:: html
+-  `cchardet <https://github.com/PyYoshi/cChardet>`__
+-  `lasio <https://github.com/kinverarity1/lasio>`__
+-  `numpy <http://www.numpy.org>`__
+-  `scipy <https://www.scipy.org>`__
+-  `pandas <http://pandas.pydata.org>`__
+-  `matplotlib <http://matplotlib.org>`__
+-  `scikit-learn <http://scikit-learn.org/stable/>`__
 
-    <div style='clear:both'></div>
-
-
-
-.. only :: html
-
- .. container:: sphx-glr-footer
-
-
-  .. container:: sphx-glr-download
-
-    :download:`Download all examples in Python source code: auto_examples_python.zip </C:/Users/todd.heitmann/Documents/GitHub/PetroPy/doc/auto_examples/auto_examples_python.zip>`
-
-
-
-  .. container:: sphx-glr-download
-
-    :download:`Download all examples in Jupyter notebooks: auto_examples_jupyter.zip </C:/Users/todd.heitmann/Documents/GitHub/PetroPy/doc/auto_examples/auto_examples_jupyter.zip>`
 
 
 .. only:: html
