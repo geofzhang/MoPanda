@@ -10,7 +10,13 @@ end_depth = 5000
 # Load LAS file
 log = Log(las_file_path)
 
-# Export converted data (raw) to either .csv or .xlsx
+# # Display well head information
+# print(log.well)
+#
+# # Display drilling parameters
+# print(log.params)
+
+# # Export converted data (raw) to either .csv or .xlsx
 # log.export_csv()
 # log.export_excel()
 
@@ -37,6 +43,8 @@ log.load_tops(csv_path=tops_file_path, depth_type='MD', source='CA')
 # viewer = LogViewer(log, top=3950, height=1000)
 # viewer.show()
 
+
+
 # Electrofacies
 logs = [log]  # List of Log objects
 formations = []  # List of formation names (optional)
@@ -54,8 +62,8 @@ clustering_params = {
     'fuzzy': {}  # 'n_clusters' is optional if auto optimization is wanted
 }
 
-electrofacies(logs, formations, curves, log_scale=log_scale,
-              n_components=n_components, curve_names=curve_names,
-              clustering_methods=clustering_methods,
-              clustering_params=clustering_params)
+# electrofacies(logs, formations, curves, log_scale=log_scale,
+#               n_components=n_components, curve_names=curve_names,
+#               clustering_methods=clustering_methods,
+#               clustering_params=clustering_params)
 print(log.curves)

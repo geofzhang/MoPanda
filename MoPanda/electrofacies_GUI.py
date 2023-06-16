@@ -36,7 +36,8 @@ def select_curves(log):
     # GUI layout for curve selection
     layout = [
         [sg.Text("Available curves:")],
-        [sg.Listbox(list(zip(curve_names, curve_descs)), size=(60, 6), key="-CURVE_LIST-", select_mode=sg.LISTBOX_SELECT_MODE_MULTIPLE)],
+        [sg.Listbox(list(zip(curve_names, curve_descs)), size=(60, 6), key="-CURVE_LIST-",
+                    select_mode=sg.LISTBOX_SELECT_MODE_MULTIPLE)],
         [sg.Button("Select", key="-SELECT-")]
     ]
 
@@ -57,16 +58,16 @@ def select_curves(log):
 
 
 def electrofacies(
-    logs,
-    formations,
-    curves=None,
-    log_scale=None,
-    n_components=0.85,
-    curve_names=None,
-    clustering_methods=None,
-    clustering_params=None,
-    depth_constrain_weight=0.5,
-    cluster_range=None,
+        logs,
+        formations,
+        curves=None,
+        log_scale=None,
+        n_components=0.85,
+        curve_names=None,
+        clustering_methods=None,
+        clustering_params=None,
+        depth_constrain_weight=0.5,
+        cluster_range=None,
 ):
     """
     Electrofacies function to group intervals by rock type. Also
@@ -221,7 +222,8 @@ def electrofacies(
                     cluster_range = cluster_range or (2, 10)
                 print(f'Clustering using {method} method...')
                 best_n_clusters = find_optimal_cluster_number_fuzzy(weighted_distance_matrix, cluster_range)
-                cntr, u, u0, d, jm, p, fpc = fuzz.cluster.cmeans(weighted_distance_matrix.T, best_n_clusters, 2, error=0.005, maxiter=1000)
+                cntr, u, u0, d, jm, p, fpc = fuzz.cluster.cmeans(weighted_distance_matrix.T, best_n_clusters, 2,
+                                                                 error=0.005, maxiter=1000)
                 membership_scores = u.T
                 labels = np.argmax(membership_scores, axis=1) + 1
                 for i, cluster in enumerate(range(best_n_clusters)):
@@ -280,6 +282,7 @@ def electrofacies(
 
     return logs
 
+
 def find_optimal_cluster_number_kmeans(X, cluster_range):
     """
     Find the optimal number of clusters for K-means clustering using the Elbow Method.
@@ -307,6 +310,8 @@ def find_optimal_cluster_number_kmeans(X, cluster_range):
     best_n_clusters = np.argmax(scores) + cluster_range[0]
     print(f'The optimal cluster number is {best_n_clusters}.')
     return best_n_clusters
+
+
 def find_optimal_cluster_number_fuzzy(X, cluster_range):
     """
     Find the optimal number of clusters using Fuzzy C-means clustering.
@@ -338,4 +343,3 @@ def find_optimal_cluster_number_fuzzy(X, cluster_range):
 
     print(f'The optimal cluster number is {best_n_clusters}, with a FPC score of {best_score}.')
     return best_n_clusters
-

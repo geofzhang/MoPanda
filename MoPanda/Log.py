@@ -633,7 +633,7 @@ class Log(LASFile):
             {'mnemonic': 'VPYR', 'data': np.copy(nulls), 'unit': 'v/v',
              'descr': 'Matrix Volume Fraction Pyrite'},
 
-            {'mnemonic': 'RHOM', 'data': np.copy(nulls), 'unit': 'g/cc',
+            {'mnemonic': 'RHOMAA', 'data': np.copy(nulls), 'unit': 'g/cc',
              'descr': 'Matrix Density'},
 
             {'mnemonic': 'TOC', 'data': np.copy(nulls), 'unit': 'wt/wt',
@@ -1176,7 +1176,7 @@ class Log(LASFile):
                 self['V' + name_log_x] = vx
 
             ### weight percent ###
-            self['RHOM'][i] = rhom
+            self['RHOMAA'][i] = rhom
             self['TOC'][i] = toc
             self['WTCLAY'][i] = wtclay
             self['WTPYR'][i] = wtpyr
