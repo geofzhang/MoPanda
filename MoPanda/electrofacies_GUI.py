@@ -1,3 +1,5 @@
+import os
+
 import numpy as np
 import pandas as pd
 from sklearn.metrics import silhouette_score
@@ -8,9 +10,15 @@ from sklearn.cluster import (
     DBSCAN,
     AffinityPropagation,
     OPTICS,
+    AgglomerativeClustering,
 )
 import PySimpleGUI as sg
 import skfuzzy as fuzz
+import matplotlib.pyplot as plt
+from data_analysis import plot_pc_crossplot, plot_pca_variance, create_subplots
+from Log import fill_null
+import xml.etree.ElementTree as ET
+import xml.dom.minidom as minidom
 
 
 def select_curves(log):
@@ -66,8 +74,8 @@ def electrofacies(
         curve_names=None,
         clustering_methods=None,
         clustering_params=None,
-        depth_constrain_weight=0.5,
         cluster_range=None,
+        template=None
 ):
     """
     Electrofacies function to group intervals by rock type. Also
@@ -130,7 +138,7 @@ def electrofacies(
         window.close()
 
         if event == "-DEFAULT_CURVES-":
-            curves = ['SGR_N', 'SP_N', 'RESDEEP_N', 'NPHI_N', 'RHOB_N', 'PE_N']
+            curves = ['CAL_N', 'CGR_N', 'SP_N', 'RESDEEP_N', 'NPHI_N', 'RHOB_N', 'PE_N']
         elif event == "-MANUAL_CURVES-":
             curves = select_curves(logs[0])
 
@@ -139,7 +147,7 @@ def electrofacies(
             'kmeans',
             'dbscan',
             'affinity',
-            'optics',
+            'agglom',
             'fuzzy',
         ]
 
@@ -157,14 +165,12 @@ def electrofacies(
             raise ValueError('UWI required for log identification.')
 
         df = pd.DataFrame()
-        log_df = log.df().reset_index()
-
+        log_df = log.df()
         log_df['UWI'] = log.well['UWI'].value
         log_df['DEPTH_INDEX'] = np.arange(0, len(log[0]))
 
         if not formations:
             formations = list(log.tops.keys())
-
         for formation in formations:
             top = log.tops[formation]
             bottom = log.formation_bottom_depth(formation)
@@ -172,9 +178,8 @@ def electrofacies(
                 np.where(log[0] >= top)[0], np.where(log[0] < bottom)[0]
             )
             log_df_subset = log_df.iloc[depth_index]
-            log_df_subset = log_df_subset.dropna()
-            df = pd.concat([df, log_df_subset], ignore_index=True)
 
+            df = pd.concat([df, log_df_subset], ignore_index=True)
         dfs.append(df)
 
     for df in dfs:
@@ -182,11 +187,20 @@ def electrofacies(
         for s in log_scale:
             df[s] = np.log(df[s])
 
-        not_null_rows = pd.notnull(df[curves]).any(axis=1)
+        # Cleaning and filling null data within depth range
+        df = fill_null(df)
+
+        # Remove rows with null at the beginning or end that can't be interpolated
+        not_null_rows = pd.notnull(df[curves]).all(axis=1)
 
         X = StandardScaler().fit_transform(df.loc[not_null_rows, curves])
 
         pc = PCA(n_components=n_components).fit(X)
+
+        pc_full = PCA(n_components=min(len(curves), len(df.index))).fit(X)
+        pc_full_variance = pc_full.explained_variance_ratio_
+
+        pca_loadings = pd.DataFrame((pc.components_.T * np.sqrt(pc.explained_variance_)).T, columns=curves)
 
         components = pd.DataFrame(data=pc.transform(X), index=df[not_null_rows].index)
         clustering_input = components.to_numpy()
@@ -201,15 +215,10 @@ def electrofacies(
             clustering_param = clustering_params.get(method, {})
             model = None  # Initialize model variable
 
-            distance_matrix = np.sqrt(np.sum((clustering_input[:, np.newaxis] - clustering_input) ** 2, axis=2))
-            depth_indices = components['DEPTH_INDEX'].to_numpy()
-            depth_constrain = np.exp(-depth_constrain_weight * np.abs(np.subtract.outer(depth_indices, depth_indices)))
-            weighted_distance_matrix = distance_matrix * depth_constrain
-
             if method == 'kmeans':
                 if 'n_clusters' not in clustering_param:
                     cluster_range = cluster_range or (2, 10)
-                    clustering_param['n_clusters'] = find_optimal_cluster_number_kmeans(X, cluster_range)
+                    clustering_param['n_clusters'] = find_optimal_cluster_number_kmeans(clustering_input, cluster_range)
                 model = MiniBatchKMeans(batch_size=size, **clustering_param)
             elif method == 'dbscan':
                 model = DBSCAN(**clustering_param)
@@ -217,36 +226,50 @@ def electrofacies(
                 model = AffinityPropagation(**clustering_param)
             elif method == 'optics':
                 model = OPTICS(**clustering_param)
+            elif method == 'agglom':
+                model = AgglomerativeClustering(**clustering_param)
             elif method == 'fuzzy':
+                print(f'Clustering using {method} method...')
                 if 'n_clusters' not in clustering_param:
                     cluster_range = cluster_range or (2, 10)
-                print(f'Clustering using {method} method...')
-                best_n_clusters = find_optimal_cluster_number_fuzzy(weighted_distance_matrix, cluster_range)
-                cntr, u, u0, d, jm, p, fpc = fuzz.cluster.cmeans(weighted_distance_matrix.T, best_n_clusters, 2,
+                    n_clusters = find_optimal_cluster_number_fuzzy(clustering_input, cluster_range)
+                else:
+                    n_clusters = clustering_param['n_clusters']
+                cntr, u, u0, d, jm, p, fpc = fuzz.cluster.cmeans(clustering_input.T, n_clusters, 2,
                                                                  error=0.005, maxiter=1000)
                 membership_scores = u.T
                 labels = np.argmax(membership_scores, axis=1) + 1
-                for i, cluster in enumerate(range(best_n_clusters)):
+
+                membership_curve_names = []
+                for i, cluster in enumerate(range(n_clusters)):
                     membership_curve = f'{curve_name}_MEMBER_{cluster + 1}'
                     df.loc[not_null_rows, membership_curve] = membership_scores[:, i]
                     curve_names.append(membership_curve)
+                    membership_curve_names.append(membership_curve)
+                output_template = parsing_membership_track(template, membership_curve_names)
             else:
                 raise ValueError(f"Unknown clustering method: {method}")
 
             if model is not None:
                 print(f'Clustering using {method} method...')
                 if method == 'kmeans':
-                    labels = model.fit_predict(weighted_distance_matrix) + 1
-                else:
-                    labels = model.fit_predict(weighted_distance_matrix)
+                    labels = model.fit_predict(clustering_input) + 1
+                    num_top_logs = 10
 
+                    # plot_pca_variance(pc_full_variance)
+                    # plot_pc_crossplot(components, pca_loadings, labels, num_top_logs)
+                    create_subplots(components, pca_loadings, labels, num_top_logs, pc_full_variance)
+
+                else:
+                    labels = model.fit_predict(clustering_input) + 1
+
+            print(f'{len(np.unique(labels))} electrofacies assigned.')
             df.loc[not_null_rows, curve_name] = labels
             print(f'Done!')
 
         for log, df in zip(logs, dfs):
 
             uwi = log.well['UWI'].value
-
             for v, vector in enumerate(pc.components_):
                 v += 1
                 pc_curve = f'PC{v}'
@@ -256,9 +279,9 @@ def electrofacies(
                 else:
                     data = np.empty(len(log[0]))
                     data[:] = np.nan
-
                 depth_index = components.loc[components.UWI == uwi, 'DEPTH_INDEX']
                 data[depth_index] = np.copy(components.loc[components.UWI == uwi, pc_curve])
+
                 log.add_curve(
                     pc_curve,
                     np.copy(data),
@@ -280,7 +303,7 @@ def electrofacies(
                     descr='Electrofacies',
                 )
 
-    return logs
+    return output_template, logs
 
 
 def find_optimal_cluster_number_kmeans(X, cluster_range):
@@ -343,3 +366,51 @@ def find_optimal_cluster_number_fuzzy(X, cluster_range):
 
     print(f'The optimal cluster number is {best_n_clusters}, with a FPC score of {best_score}.')
     return best_n_clusters
+
+
+def parsing_membership_track(template, curve_names):
+    # Load the template file
+    tree = ET.parse(template)
+    root = tree.getroot()
+
+    # Find the track with display_name = "FUZZY MEMBERSHIP" or create a new one if not found
+    track_fuzzy_membership = root.find(".//track[@display_name='FUZZY MEMBERSHIP']")
+    if track_fuzzy_membership is None:
+        track_fuzzy_membership = ET.SubElement(root, "track")
+        track_fuzzy_membership.set("display_name", "FUZZY MEMBERSHIP")
+        track_fuzzy_membership.set("width", "2")
+        track_fuzzy_membership.set("left", "0")
+        track_fuzzy_membership.set("right", "1")
+        track_fuzzy_membership.set("major_lines", "9")
+        track_fuzzy_membership.set("cumulative", "True")
+    else:
+        # Clear existing curves under the FUZZY MEMBERSHIP track
+        existing_curves = track_fuzzy_membership.findall("curve")
+        for curve in existing_curves:
+            track_fuzzy_membership.remove(curve)
+
+    color_palette = ["#a6cee3", "#1f78b4", "#b2df8a", "#33a02c", "#fb9a99", "#e31a1c", "#fdbf6f", "#ff7f00", "#cab2d6",
+                     "#6a3d9a", "#ffff99", "#b15928"]
+
+    # Iterate over the membership curves and add them as curves under the FUZZY MEMBERSHIP track
+    for i, membership_curve in enumerate(curve_names):
+        curve = ET.SubElement(track_fuzzy_membership, "curve")
+        curve.set("display_name", f"MEM{i}")
+        curve.set("curve_name", membership_curve)
+        curve.set("fill_color", color_palette[i % len(color_palette)])
+
+    # Convert the XML tree to a formatted string
+    new_xml_str = ET.tostring(track_fuzzy_membership, encoding="utf-8").decode()
+    formatted_new_xml_str = minidom.parseString(new_xml_str).toprettyxml(indent="  ")
+
+    # Find the position of the FUZZY MEMBERSHIP track in the original XML tree
+    index = list(root).index(track_fuzzy_membership)
+
+    # Replace the XML string of the newly added data with the formatted XML string
+    root[index] = ET.fromstring(formatted_new_xml_str)
+
+    # Write the updated XML tree to the original file, overwriting it
+    output_template = f'./data/template/electrofacies_{len(curve_names)}members.xml'
+    tree.write(output_template, encoding="utf-8", xml_declaration=True)
+
+    return output_template

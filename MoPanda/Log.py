@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 import datetime as dt
 from scipy.optimize import nnls
-
+from scipy.interpolate import interp1d
 from lasio import LASFile, CurveItem
 
 
@@ -25,6 +25,29 @@ def check_file(output_file):
 
 # Major Log subclass that inherits the LASFile superclass and perform expansive mathematical petrophysics analysis and
 # data analysis.
+def fill_null(df):
+    for column in df.columns:
+        null_counts = df[column].isnull().sum()
+        if null_counts > 50:
+            # Use polynomial interpolation
+            df[column].interpolate(method='polynomial', order=2, inplace=True)
+        elif 20 < null_counts <= 50:
+            # Use spline interpolation
+            null_indices = np.where(df[column].isnull())[0]
+            valid_indices = np.where(df[column].notnull())[0]
+            if null_indices[0] < valid_indices[0]:
+                valid_indices = np.concatenate(([null_indices[0]], valid_indices))
+            if null_indices[-1] > valid_indices[-1]:
+                valid_indices = np.concatenate((valid_indices, [null_indices[-1]]))
+            spline_func = interp1d(valid_indices, df[column].values[valid_indices], kind='cubic')
+            df[column].values[null_indices] = spline_func(null_indices)
+        else:
+            # Use smooth interpolation
+            df[column].interpolate(method='linear', inplace=True)
+
+    return df
+
+
 class Log(LASFile):
     def __init__(self, file_ref=None, **kwargs):
         if file_ref is not None:
@@ -38,15 +61,19 @@ class Log(LASFile):
 
     def log_qc(self, start_depth, end_depth):
         preserved_columns = []
-        df = self.df().reset_index()
+        df = self.df()
         n_total_logs = len(df.columns)
         for column in df.columns:
             column_data = df[column]
             column_start_depth = column_data.first_valid_index()
             column_end_depth = column_data.last_valid_index()
 
+            # Exclude logs that are not having enough data coverage
             if column_start_depth <= start_depth and column_end_depth >= end_depth:
-                preserved_columns.append(column)
+
+                # Exclude logs that only contain 0, 0.5, and 1.
+                if not column_data.isin([0, 0.5, 1]).all():
+                    preserved_columns.append(column)
 
         preserved_df = df[preserved_columns]
         n_preserved_logs = len(preserved_df.columns)
@@ -56,7 +83,7 @@ class Log(LASFile):
 
         # Delete dropped curves from LASFile
         for curve_name in self.keys():
-            if curve_name not in preserved_columns:
+            if curve_name not in preserved_columns and curve_name != 'DEPT':
                 self.delete_curve(curve_name)
         return preserved_df
 
@@ -66,7 +93,7 @@ class Log(LASFile):
         """
 
         file_dir = os.path.dirname(__file__)
-        alias_path = os.path.join(file_dir, 'data', 'log_alias.xml')
+        alias_path = os.path.join(file_dir, 'data/log_info', 'log_alias.xml')
 
         if not os.path.isfile(alias_path):
             raise ValueError('No alias file at: %s' % alias_path)
@@ -88,21 +115,18 @@ class Log(LASFile):
     def load_tops(self, csv_path=None, depth_type='MD', source=None):
         if csv_path is None:
             local_path = os.path.dirname(__file__)
-            csv_path = os.path.join(local_path, 'data', 'tops.csv')
+            csv_path = os.path.join(local_path, 'data/log_info', 'tops.csv')
 
         top_df = pd.read_csv(csv_path, dtype={'UWI': str, 'Src': str})
-
         # Change data type to str for columns starting with 'Fm Name'
         fm_columns = [col for col in top_df.columns if col.startswith('Fm Name')]
         form = fm_columns[0]
-
         if source and source != 'All':
             # Check if the source exists in the 'Src' column, if not exit
             if source not in top_df['Src'].unique():
                 print("Source not found in the 'Src' column.")
                 return
             top_df = top_df[top_df['Src'] == source]
-
         columns_to_select = ['UWI', form, depth_type]
         top_df = top_df[columns_to_select]
         top_df = top_df.dropna(subset=[depth_type])
@@ -116,6 +140,9 @@ class Log(LASFile):
             top_df[form] = top_df[form].str.lstrip('CA_')
 
         # Only select tops for specific well/UWI.
+        if str(self.well['UWI'].value) not in top_df['UWI'].unique():
+            print("Well UWI is not found in the tops.csv file.")
+            return
         well_tops_df = top_df[top_df['UWI'] == str(self.well['UWI'].value)]
         for r, row in well_tops_df.iterrows():
             self.tops[row[form]] = float(row[depth_type].replace(",", ""))
@@ -152,7 +179,7 @@ class Log(LASFile):
 
         if csv_path is None:
             local_path = os.path.dirname(__file__)
-            csv_path = os.path.join(local_path, 'data', 'fluid_properties.csv')
+            csv_path = os.path.join(local_path, 'data/calculation_pars', 'fluid_properties.csv')
 
         df = pd.read_csv(csv_path)
         df = df.set_index('name')
@@ -480,7 +507,24 @@ class Log(LASFile):
                                       unit=curve['unit'],
                                       descr=curve['descr'])
 
-    def formation_fluid_properties(self, formations, parameter='default'):
+    def formation_fluid_properties(self, parameter='default', formations=None):
+        """
+        Calculate fluid properties over formations with preloaded paramters
+
+        Parameters
+        ----------
+        formations : list
+            list of formations to calculate fluid properties over
+
+        parameter : str (default 'default')
+            name of parameter to use for fluid properties parameter
+            settings loaded in method
+            fluid_properties_parameters_from_csv
+
+        """
+
+        if not formations:
+            formations = list(self.tops.keys())
         for form in formations:
             top = self.tops[form]
             bottom = self.formation_bottom_depth(form)
@@ -498,7 +542,7 @@ class Log(LASFile):
         """
         if csv_path is None:
             local_path = os.path.dirname(__file__)
-            csv_path = os.path.join(local_path, 'data', 'multimineral.csv')
+            csv_path = os.path.join(local_path, 'data/calculation_pars', 'multimineral_parameters.csv')
 
         df = pd.read_csv(csv_path)
         df = df.set_index('name')
@@ -528,7 +572,7 @@ class Log(LASFile):
                            buckles_parameter=-1):
 
         # initialize required curves
-        required_raw_curves = ['GR_N', 'NPHI_N', 'RHOB_N', 'RESDEEP_N']
+        required_raw_curves = ['CGR_N', 'NPHI_N', 'RHOB_N', 'RESDEEP_N']
 
         # check if PE is available
         if 'PE_N' in self.keys():
@@ -633,7 +677,7 @@ class Log(LASFile):
             {'mnemonic': 'VPYR', 'data': np.copy(nulls), 'unit': 'v/v',
              'descr': 'Matrix Volume Fraction Pyrite'},
 
-            {'mnemonic': 'RHOMAA', 'data': np.copy(nulls), 'unit': 'g/cc',
+            {'mnemonic': 'RHOM', 'data': np.copy(nulls), 'unit': 'g/cc',
              'descr': 'Matrix Density'},
 
             {'mnemonic': 'TOC', 'data': np.copy(nulls), 'unit': 'wt/wt',
@@ -775,7 +819,7 @@ class Log(LASFile):
                 nphia = self['NPHI_N'][i] + (nphi_matrix - nphi_om) * vom
 
                 ### clay solver ###
-                gr_index = np.clip((self['GR_N'][i] - gr_matrix) \
+                gr_index = np.clip((self['CGR_N'][i] - gr_matrix) \
                                    / (gr_clay - gr_matrix), 0, 1)
 
                 ### linear vclay method ###
@@ -1039,7 +1083,7 @@ class Log(LASFile):
                 vom = bvom / per_matrix
                 vpyr = bvpyr / per_matrix
 
-                # calculate weight fraction
+                # calculate weight fractions
 
                 mass_qtz = vqtz * rho_qtz
                 mass_clc = vclc * rho_clc
@@ -1176,7 +1220,7 @@ class Log(LASFile):
                 self['V' + name_log_x] = vx
 
             ### weight percent ###
-            self['RHOMAA'][i] = rhom
+            self['RHOM'][i] = rhom
             self['TOC'][i] = toc
             self['WTCLAY'][i] = wtclay
             self['WTPYR'][i] = wtpyr
@@ -1223,6 +1267,30 @@ class Log(LASFile):
             self['BVWF'][depth_index] = self['BVW'][depth_index] - \
                                         self['BVWI'][depth_index]
 
+    def formation_multimineral_model(self, formations=None,
+                                     parameter='default'):
+        """
+        Calculate multimineral model over formations with loaded parameters
+
+        Parameters
+        ----------
+        formations : list
+            list of formations to perform mineral compositional analysis over
+        parameter : str (default 'default')
+            Parameters will be used for mineral compositional analysis
+            Loaded from mineral_parameters function
+
+        """
+        if not formations:
+            formations = list(self.tops.keys())
+        for form in formations:
+            top = self.tops[form]
+            bottom = self.formation_bottom_depth(form)
+
+            params = self.multimineral_parameters[parameter]
+
+            self.multimineral_model(top=top, bottom=bottom, **params)
+
     def export_csv(self, filepath=None, fill_null=True, **kwargs):
         """
         Export data to a csv file.
@@ -1233,7 +1301,7 @@ class Log(LASFile):
         """
         if filepath is None:
             local_path = os.path.dirname(__file__)
-            filepath = os.path.join(local_path, f"data/{self.filename}_las2csv.csv")
+            filepath = os.path.join(local_path, f"data/OUTPUT/{self.filename}_las2csv.csv")
         if check_file(filepath):
             df = self.df()
             if fill_null:
@@ -1254,7 +1322,7 @@ class Log(LASFile):
         """
         if filepath is None:
             local_path = os.path.dirname(__file__)
-            filepath = os.path.join(local_path, f"data/{self.filename}_las2excel.xlsx")
+            filepath = os.path.join(local_path, f"data/OUTPUT/{self.filename}_las2excel.xlsx")
         if check_file(filepath):
             self.to_excel(filepath)
         else:
@@ -1268,7 +1336,7 @@ class Log(LASFile):
         """
         if filepath is None:
             local_path = os.path.dirname(__file__)
-            filepath = os.path.join(local_path, f"data/{self.filename}_edited.las")
+            filepath = os.path.join(local_path, f"data/OUTPUT/{self.filename}_edited.las")
         with open(filepath, 'w') as f:
             super(Log, self).write(f, version=version, wrap=wrap,
                                    STRT=STRT, STOP=STOP,

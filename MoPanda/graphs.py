@@ -51,12 +51,8 @@ class LogViewer(object):
 
         default_templates_paths = {
             'raw': 'default_raw_template.xml',
-            'multimin_oil': 'default_multimin_oil_template.xml',
-            'multimin_oil_sum': 'default_multimin_oil_sum_template.xml',
-            'full_oil': 'default_oil_full_template.xml',
-            'multimin_gas': 'default_multimin_gas_template.xml',
-            'multimin_gas_sum': 'default_multimin_gas_sum_template.xml',
-            'full_gas': 'default_gas_full_template.xml'
+            'full': 'default_full_template.xml',
+            'electrofacies': 'default_electrofacies_template.xml',
         }
 
         file_dir = os.path.dirname(__file__)
@@ -127,7 +123,7 @@ class LogViewer(object):
             if 'alpha' in formation.attrib:
                 alpha = float(formation.attrib['alpha'])
             else:
-                alpha = 0.5
+                alpha = 0.1
 
             formation_top = self.log.tops[name]
             formation_bottom = self.log.formation_bottom_depth(name)
@@ -140,7 +136,7 @@ class LogViewer(object):
                 ax.text(0.5, formation_mid, name,
                         verticalalignment='center',
                         horizontalalignment='center',
-                        rotation=90, fontsize=16)
+                        rotation=0, fontsize=9)
 
         numbers = None
         ticks = None
@@ -268,8 +264,8 @@ class LogViewer(object):
                             (2 * len(track))
                     else:
                         x = float(c) / len(track) + 1.0 / (2 * len(track))
-
-                    ax.text(x, 1.03, curve_name, rotation=90,
+                    display_name = curve.attrib.get('display_name', curve.attrib['curve_name'])
+                    ax.text(x, 1.03, display_name, rotation=90,
                             horizontalalignment='center',
                             verticalalignment='bottom',
                             transform=ax.transAxes,
@@ -359,8 +355,11 @@ class LogViewer(object):
                             left_color_value = left
 
                         if 'right_color_value' in curve.attrib:
-                            right_color_value = \
-                                float(curve.attrib['right_color_value'])
+                            if curve.attrib['right_color_value'] == "auto":
+                                right_color_value = len(set(x))
+                            else:
+                                right_color_value = \
+                                    float(curve.attrib['right_color_value'])
                         else:
                             right_color_value = right
 
@@ -380,16 +379,17 @@ class LogViewer(object):
                             left_color_value = left
 
                         if 'right_color_value' in curve.attrib:
-                            right_color_value = \
-                                float(curve.attrib['right_color_value'])
+                            if curve.attrib['right_color_value'] == "auto":
+                                right_color_value = len(np.unique(x[~np.isnan(x)]))
+                            else:
+                                right_color_value = float(curve.attrib['right_color_value'])
                             right_color_value = m * right_color_value + b
                         else:
                             right_color_value = right
 
                     ### label ###
                     if 'display_name' in curve.attrib:
-                        self._display_name_to_curve_name \
-                            [curve.attrib['display_name']] = curve_name
+                        self._display_name_to_curve_name[curve.attrib['display_name']] = curve_name
 
                         ax.text(0.5, 0.98 + 0.035 * (c + 1),
                                 curve.attrib['display_name'],
@@ -399,22 +399,23 @@ class LogViewer(object):
                                 fontsize=12,
                                 color=color,
                                 picker=True)
+                        if not track.attrib['display_name'] == "MINERALOGY" and not 'FACIES' in curve.attrib[
+                            'curve_name']:
+                            ax.text(0, 0.98 + 0.035 * (c + 1),
+                                    left_label,
+                                    horizontalalignment='left',
+                                    verticalalignment='bottom',
+                                    transform=ax.transAxes,
+                                    fontsize=12,
+                                    color=color)
 
-                        ax.text(0, 0.98 + 0.035 * (c + 1),
-                                left_label,
-                                horizontalalignment='left',
-                                verticalalignment='bottom',
-                                transform=ax.transAxes,
-                                fontsize=12,
-                                color=color)
-
-                        ax.text(1, 0.98 + 0.035 * (c + 1),
-                                right_label,
-                                horizontalalignment='right',
-                                verticalalignment='bottom',
-                                transform=ax.transAxes,
-                                fontsize=12,
-                                color=color)
+                            ax.text(1, 0.98 + 0.035 * (c + 1),
+                                    right_label,
+                                    horizontalalignment='right',
+                                    verticalalignment='bottom',
+                                    transform=ax.transAxes,
+                                    fontsize=12,
+                                    color=color)
 
                     if 'fill' in curve.attrib:
 
@@ -434,35 +435,27 @@ class LogViewer(object):
 
                         elif 'fill_color_map' in curve.attrib:
                             cmap_name = curve.attrib['fill_color_map']
-
-                            span = \
-                                abs(left_color_value - right_color_value)
-
                             cmap = plt.get_cmap(cmap_name)
-
                             if len(np.unique(x)) < 50:
-                                color_index = np.unique(x)
+                                color_index = np.unique(x[~np.isnan(x)])
+                                print(color_index)
                             else:
-                                color_index = np.arange(left_color_value, \
-                                                        right_color_value, \
-                                                        span / 50.0)
+                                if curve.attrib['fill'] == 'left':
+                                    color_index = np.linspace(left_color_value, right_color_value, num=50)
+                                elif curve.attrib['fill'] == 'right':
+                                    color_index = np.linspace(right_color_value, left_color_value, num=50)
 
                             if curve.attrib['fill'] == 'left':
-                                baseline = np.ones(len(x)) * \
-                                           min(left_color_value, left)
-
+                                baseline = np.ones(len(x)) * min(left_color_value, left)
                             elif curve.attrib['fill'] == 'right':
-                                baseline = np.ones(len(x)) * \
-                                           max(right_color_value, right)
+                                baseline = np.ones(len(x)) * max(right_color_value, right)
 
                             for ci in sorted(color_index):
-                                ci_value = (ci - left_color_value) / span
-                                color = cmap(ci_value)
-                                ax.fill_betweenx(self.log[0],
-                                                 baseline,
-                                                 x,
-                                                 where=x >= ci,
-                                                 color=color)
+                                ci_normalized = (ci - right_color_value) / (left_color_value - right_color_value)
+                                if curve.attrib['fill'] == 'right' and left_color_value > right_color_value:
+                                    ci_normalized = 1 - ci_normalized
+                                color = cmap(ci_normalized)
+                                ax.fill_betweenx(self.log[0], baseline, x, where=x >= ci, color=color)
 
                     if 'right_cutoff_fill' in curve.attrib:
 

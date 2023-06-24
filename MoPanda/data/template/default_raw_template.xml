@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<graph>
+  <track display_name="GAMMA RAY" width="1.5" major_lines="3">
+    <curve display_name="CAL" curve_name="CAL_N" color="#FF0000" left="20" right="0"/>
+    <curve display_name="CGR" curve_name="CGR_N" color="#006400" left="200" right="0" fill="right" fill_color_map="Greens" left_color_value="100"/>
+  </track>
+  <track display_name="DEPTH" number_spacing="50" tick_spacing="10" line_spacing="50" width="0.75">
+  </track>
+  <track display_name="RESISTIVITY" scale="log" width="2">
+    <curve display_name="RESMED" curve_name="RESMED_N" color="#cc0000" left="2" right="2100"/>
+    <curve display_name="RESDEEP" curve_name="RESDEEP_N" color="#330000" left="2" right="2100" right_cutoff_fill="20" right_cutoff_fill_color="#ff9994"/>
+  </track>
+  <track display_name="NEUTRON DENSITY" width="2" major_lines="9">
+    <curve display_name="PE" curve_name="PE_N" color="#000000" left="0" right="10" right_cutoff_fill="3" right_cutoff_fill_color="#cde7f0" left_cutoff_fill="3" left_cutoff_fill_color="#ffff99"/>
+    <curve display_name="RHOB" curve_name="RHOB_N" color="#FF0000" left="1.95" right="2.95"/>
+    <curve display_name="NPHI" curve_name="NPHI_N" color="#0099CC" left="0.75" right="-0.10" line_style="--"/>
+  </track>
+</graph>
