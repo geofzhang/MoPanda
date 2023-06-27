@@ -18,40 +18,35 @@
   </formation>
   <formation name="STONE_CORRAL" color="#c0a980" >
   </formation>
-  <track display_name="GAMMA RAY" width="1.5" major_lines="3">
+  <track display_name="GAMMA RAY" width="1" major_lines="3">
     <curve display_name="CAL" curve_name="CAL_N" color="#FF0000" right="20" left="0"/>
     <curve display_name="CGR" curve_name="CGR_N" color="#008000" right="200" left="0" fill="right" fill_color_map="copper" left_color_value="0" right_color_value="100"/>
     <curve display_name="SGR" curve_name="SGR_N" color="#0080ff" right="200" left="0"/>
   </track>
   <track display_name="DEPTH" number_spacing="50" tick_spacing="10" line_spacing="100" width="0.75">
   </track>
-  <track display_name="RESISTIVITY" scale="log" width="1.5">
+  <track display_name="RESISTIVITY" scale="log" width="1">
     <curve display_name="RESMED" curve_name="RESMED_N" color="#cc0000" left="2" right="2000"/>
     <curve display_name="RESDEEP" curve_name="RESDEEP_N" color="#330000" left="2" right="2000" right_cutoff_fill="20" right_cutoff_fill_color="#ff9994"/>
   </track>
-  <track display_name="NEUTRON DENSITY" width="2" major_lines="9">
+  <track display_name="NEUTRON DENSITY" width="1" major_lines="9">
     <curve display_name="PE" curve_name="PE_N" color="#000000" left="0" right="10" right_cutoff_fill="4" right_cutoff_fill_color="#cde7f0" left_cutoff_fill="4" left_cutoff_fill_color="#ffff99"/>
     <curve display_name="RHOB" curve_name="RHOB_N" color="#FF0000" left="1.95" right="2.95"/>
     <curve display_name="NPHI" curve_name="NPHI_N" color="#0099CC" left="0.45" right="-0.15" line_style="--"/>
   </track>
-  <track display_name="" width="1" major_lines="3">
-    <curve display_name="TOC" curve_name="TOC" color="#681a1a" left="0.1" right="0" fill="right" fill_color="#571616"/>
+  <track display_name="CMR BIN POROSITY" width="1.5" left="0" right="1" major_lines="3" distribution="True">
+    <curve display_name="BIN1" curve_name="CBP1"/>
+    <curve display_name="BIN2" curve_name="CBP2"/>
+    <curve display_name="BIN3" curve_name="CBP3"/>
+    <curve display_name="BIN4" curve_name="CBP4"/>
+    <curve display_name="BIN5" curve_name="CBP5"/>
+    <curve display_name="BIN6" curve_name="CBP6"/>
+    <curve display_name="BIN7" curve_name="CBP7"/>
+    <curve display_name="BIN8" curve_name="CBP8"/>
   </track>
-  <track display_name="MINERALOGOY" width="2" left="0" right="1" major_lines="9" cumulative="True">
-    <curve display_name="SH" curve_name="VCLAY" fill_color="#808080"/>
-    <curve display_name="SS" curve_name="VQTZ" fill_color="#ffea00"/>
-    <curve display_name="DOL" curve_name="VDOL" fill_color="#6767b8"/>
-    <curve display_name="LS" curve_name="VCLC" fill_color="#94d2ff"/>
-    <curve display_name="PY" curve_name="VPYR" fill_color="#f29727"/>
-    <curve display_name="PHI" curve_name="VOM" fill_color="#ffffff"/>
-  </track>
-  <track display_name="POROSITY" width="1" major_lines="9" left="0.2" right="0" cumulative="True">
-    <curve display_name="BVWI" curve_name="BVWI" fill_color="#bfefff"/>
-    <curve display_name="BVWF" curve_name="BVWF" fill_color="#0000ff"/>
-    <curve display_name="BVH" curve_name="BVH" fill_color="#008000"/>
-  </track>
-  <track display_name="SATURATION" width="1" major_lines="9">
-    <curve display_name="Sw" curve_name="SW" color="#0000ff" left="1" right="0" fill="right" fill_color="#bfefff"/>
+  <track display_name="CMR PARTITION" width="1" major_lines="9" left="0.5" right="0" cumulative="True">
+    <curve display_name="BOUND" curve_name="BFV" fill_color="#bfefff"/>
+    <curve display_name="FREE" curve_name="CMFF" fill_color="#0000ff"/>
   </track>
   <track display_name="" width="1" major_lines="1">
     <curve display_name="KMEANS" curve_name="FACIES_KMEANS" color="#000000" left="0" right="1" fill="left" fill_color_map="Paired" left_color_value="1" right_color_value="8"/>

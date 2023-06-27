@@ -133,7 +133,7 @@ def plot_pca_variance(variance_ratio):
     plt.show()
 
 
-def create_subplots(components, pca_loading, labels, num_top_logs, variance_ratio):
+def plot_pca_subplots(components, pca_loading, labels, num_top_logs, variance_ratio):
     """
     Create a plot with two subplots: variance ratio and PC crossplot.
 

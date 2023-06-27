@@ -4,7 +4,7 @@ from electrofacies_GUI import electrofacies
 
 las_file_path: str = './data/las/Denova1_modified.las'
 tops_file_path = './data/log_info/tops.csv'
-xml_template = './data/template/default_electrofacies_template.xml'
+xml_template = 'permeability'
 excel_output = './data/output/Denova1_ef.xlsx'
 start_depth = 1000
 end_depth = 5000
@@ -75,16 +75,32 @@ clustering_params = {
     'fuzzy': {'n_clusters': 9}  # "n_clusters" is optional if auto optimization is wanted
 }
 
-output_template, _ = electrofacies(logs, formations, curves, log_scale=log_scale,
-                                   n_components=n_components, curve_names=curve_names,
-                                   clustering_methods=clustering_methods,
-                                   clustering_params=clustering_params,
-                                   template=xml_template)
+if xml_template == 'electrofacies':
+    output_template, _ = electrofacies(logs, formations, curves, log_scale=log_scale,
+                                       n_components=n_components, curve_names=curve_names,
+                                       clustering_methods=clustering_methods,
+                                       clustering_params=clustering_params,
+                                       template=xml_template)
+else:
+    electrofacies(logs, formations, curves, log_scale=log_scale,
+                  n_components=n_components, curve_names=curve_names,
+                  clustering_methods=['kmeans'],
+                  clustering_params=clustering_params,
+                  template=xml_template)
 # print(log.curves)
 
 # View and modify logs
-viewer = LogViewer(log, template_xml_path=output_template, top=4500, height=500)
+
+# # logViewer for electrofacies
+# viewer = LogViewer(log, template_xml_path=output_template, top=4500, height=500)
+
+# # logViewer for salinity
+# viewer = LogViewer(log, template_defaults='salinity', top=4500, height=500)
+
+# logViewer for permeability
+viewer = LogViewer(log, template_defaults=xml_template, top=4500, height=500)
+
 viewer.show()
 
 # Export converted data (raw) to either .csv or .xlsx
-log.export_excel(excel_output)
+# log.export_excel(excel_output)

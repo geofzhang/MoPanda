@@ -15,7 +15,7 @@ from sklearn.cluster import (
 import PySimpleGUI as sg
 import skfuzzy as fuzz
 import matplotlib.pyplot as plt
-from data_analysis import plot_pc_crossplot, plot_pca_variance, create_subplots
+from data_analysis import plot_pc_crossplot, plot_pca_variance, plot_pca_subplots
 from Log import fill_null
 import xml.etree.ElementTree as ET
 import xml.dom.minidom as minidom
@@ -157,6 +157,31 @@ def electrofacies(
     if not clustering_params:
         clustering_params = {}
 
+    default_templates_paths = {
+        'raw': 'default_raw_template.xml',
+        'full': 'default_full_template.xml',
+        'electrofacies': 'default_electrofacies_template.xml',
+        'salinity': 'default_salinity_template.xml',
+        'permeability': 'default_permeability_template.xml'
+    }
+
+    file_dir = os.path.dirname(__file__)
+    if template is None:
+        template_xml_path = os.path.join(file_dir, 'data/template',
+                                         'default_raw_template.xml')
+
+    else:
+        if template in default_templates_paths:
+            file_name = default_templates_paths[template]
+        else:
+            print('template_defaults paramter must be in:')
+            for key in default_templates_paths:
+                print(key)
+            raise ValueError("%s is not valid template_defaults \
+                             parameter" % template)
+        template_xml_path = os.path.join(file_dir, 'data/template',
+                                         file_name)
+    output_template = []
     dfs = []
 
     for log in logs:
@@ -246,7 +271,7 @@ def electrofacies(
                     df.loc[not_null_rows, membership_curve] = membership_scores[:, i]
                     curve_names.append(membership_curve)
                     membership_curve_names.append(membership_curve)
-                output_template = parsing_membership_track(template, membership_curve_names)
+                output_template = parsing_membership_track(template_xml_path, membership_curve_names)
             else:
                 raise ValueError(f"Unknown clustering method: {method}")
 
@@ -258,7 +283,7 @@ def electrofacies(
 
                     # plot_pca_variance(pc_full_variance)
                     # plot_pc_crossplot(components, pca_loadings, labels, num_top_logs)
-                    create_subplots(components, pca_loadings, labels, num_top_logs, pc_full_variance)
+                    plot_pca_subplots(components, pca_loadings, labels, num_top_logs, pc_full_variance)
 
                 else:
                     labels = model.fit_predict(clustering_input) + 1
@@ -302,8 +327,10 @@ def electrofacies(
                     np.copy(data),
                     descr='Electrofacies',
                 )
-
-    return output_template, logs
+    if output_template is None:
+        return logs
+    else:
+        return output_template, logs
 
 
 def find_optimal_cluster_number_kmeans(X, cluster_range):
@@ -368,9 +395,9 @@ def find_optimal_cluster_number_fuzzy(X, cluster_range):
     return best_n_clusters
 
 
-def parsing_membership_track(template, curve_names):
+def parsing_membership_track(template_xml_path, curve_names):
     # Load the template file
-    tree = ET.parse(template)
+    tree = ET.parse(template_xml_path)
     root = tree.getroot()
 
     # Find the track with display_name = "FUZZY MEMBERSHIP" or create a new one if not found

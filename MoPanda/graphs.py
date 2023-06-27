@@ -9,10 +9,12 @@ bulk shifting.
 import os
 import gc
 import numpy as np
+import pandas as pd
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import xml.etree.ElementTree as ET
 from matplotlib.backend_tools import ToolBase, ToolToggleBase
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 
 mpl.rcParams['backend'] = 'TkAgg'
 plt.rcParams['toolbar'] = 'toolmanager'
@@ -53,11 +55,13 @@ class LogViewer(object):
             'raw': 'default_raw_template.xml',
             'full': 'default_full_template.xml',
             'electrofacies': 'default_electrofacies_template.xml',
+            'salinity': 'default_salinity_template.xml',
+            'permeability': 'default_permeability_template.xml'
         }
 
         file_dir = os.path.dirname(__file__)
         if template_xml_path is None and template_defaults is None:
-            template_xml_path = os.path.join(file_dir, 'data',
+            template_xml_path = os.path.join(file_dir, 'data/template',
                                              'default_raw_template.xml')
 
         elif template_xml_path is None and \
@@ -70,7 +74,7 @@ class LogViewer(object):
                     print(key)
                 raise ValueError("%s is not valid template_defaults \
                                  parameter" % template_defaults)
-            template_xml_path = os.path.join(file_dir, 'data',
+            template_xml_path = os.path.join(file_dir, 'data/template',
                                              file_name)
 
         elif template_xml_path is not None and \
@@ -285,6 +289,74 @@ class LogViewer(object):
                     ax.invert_xaxis()
 
                 c = int(c / 2) + 1
+
+            # template for 'distribution curve' display, for example, T1/ T2 distribution.
+
+            elif 'distribution' in track.attrib:
+
+                total_curves = len(track)  # Total number of curves in the track
+
+                track_width = float(track.attrib['width'])  # Width of the track
+
+                # Find the maximum value across all curves within the track, ignoring the top 5% of data
+
+                values = []
+
+                for curve in track:
+
+                    curve_name = curve.attrib.get('curve_name')
+
+                    if curve_name and curve_name in self.log.keys():
+                        curve_data = self.log[curve_name]
+
+                        curve_data = np.where(np.isnan(curve_data), 0, curve_data)
+
+                        values.extend(curve_data)
+
+                values = np.array(values)
+
+                top_5_percentile = np.percentile(values, 90)  # Get the 95th percentile value
+
+                values = values[values <= top_5_percentile]  # Filter values below the 95th percentile
+
+                max_value = np.max(values)
+
+                max_value = np.ceil(max_value * 100) / 100  # Round up the maximum value with 0.01 precision
+
+                # Create an empty 2D matrix for the heatmap
+
+                heatmap = np.zeros((len(self.log[0]), total_curves))
+
+                for c, curve in enumerate(track):
+
+                    curve_name = curve.attrib.get('curve_name')
+
+                    if curve_name and curve_name in self.log.keys():
+                        curve_data = self.log[curve_name]
+
+                        curve_data = np.where(np.isnan(curve_data), 0, curve_data)
+
+                        heatmap[:, c] = curve_data
+
+                # Assign colors using the YlGn color palette
+
+                cmap = plt.cm.YlGn
+
+                norm = plt.Normalize(vmin=0, vmax=max_value)
+
+                # Plot the heatmap
+
+                im = ax.imshow(heatmap, aspect='auto', cmap=cmap, interpolation='none', vmin=0, vmax=max_value,
+                               extent=[0, total_curves, self.log[0].max(), 0])
+
+                # Set the colorbar
+                cbar = plt.colorbar(im, ax=ax, pad=0.02)
+                cbar.set_label('Values')
+
+                # Hide the axis labels
+                ax.set_xticks([])
+                ax.set_yticks([])
+
             else:
 
                 for c, curve in enumerate(track):
