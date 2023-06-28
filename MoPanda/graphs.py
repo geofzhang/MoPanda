@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 import xml.etree.ElementTree as ET
 from matplotlib.backend_tools import ToolBase, ToolToggleBase
 from mpl_toolkits.axes_grid1 import make_axes_locatable
+from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
 mpl.rcParams['backend'] = 'TkAgg'
 plt.rcParams['toolbar'] = 'toolmanager'
@@ -269,11 +270,11 @@ class LogViewer(object):
                     else:
                         x = float(c) / len(track) + 1.0 / (2 * len(track))
                     display_name = curve.attrib.get('display_name', curve.attrib['curve_name'])
-                    ax.text(x, 1.03, display_name, rotation=90,
+                    ax.text(x, 1.05, display_name, rotation=45,
                             horizontalalignment='center',
                             verticalalignment='bottom',
                             transform=ax.transAxes,
-                            fontsize=12,
+                            fontsize=9,
                             color=fill_color)
 
                 if 'major_lines' in track.attrib:
@@ -284,6 +285,23 @@ class LogViewer(object):
                         ax.plot((m, m), (0, self.log[0].max()),
                                 color='#c0c0c0', lw=0.5)
 
+                if track.attrib['display_name'] == "WATER PARTITION":
+                    ax.text(0, 0.98 + 0.035 * (len(curve) + 1),
+                            left,
+                            horizontalalignment='left',
+                            verticalalignment='bottom',
+                            transform=ax.transAxes,
+                            fontsize=12,
+                            color='#000000')
+
+                    ax.text(1, 0.98 + 0.035 * (len(curve) + 1),
+                            right,
+                            horizontalalignment='right',
+                            verticalalignment='bottom',
+                            transform=ax.transAxes,
+                            fontsize=12,
+                            color='#000000')
+
                 ax.set_xlim(left, right)
                 if invert_axis:
                     ax.invert_xaxis()
@@ -293,34 +311,22 @@ class LogViewer(object):
             # template for 'distribution curve' display, for example, T1/ T2 distribution.
 
             elif 'distribution' in track.attrib:
-
                 total_curves = len(track)  # Total number of curves in the track
-
                 track_width = float(track.attrib['width'])  # Width of the track
 
                 # Find the maximum value across all curves within the track, ignoring the top 5% of data
-
                 values = []
-
                 for curve in track:
-
                     curve_name = curve.attrib.get('curve_name')
-
                     if curve_name and curve_name in self.log.keys():
                         curve_data = self.log[curve_name]
-
                         curve_data = np.where(np.isnan(curve_data), 0, curve_data)
-
                         values.extend(curve_data)
 
                 values = np.array(values)
-
                 top_5_percentile = np.percentile(values, 90)  # Get the 95th percentile value
-
                 values = values[values <= top_5_percentile]  # Filter values below the 95th percentile
-
                 max_value = np.max(values)
-
                 max_value = np.ceil(max_value * 100) / 100  # Round up the maximum value with 0.01 precision
 
                 # Create an empty 2D matrix for the heatmap
@@ -328,30 +334,23 @@ class LogViewer(object):
                 heatmap = np.zeros((len(self.log[0]), total_curves))
 
                 for c, curve in enumerate(track):
-
                     curve_name = curve.attrib.get('curve_name')
-
                     if curve_name and curve_name in self.log.keys():
                         curve_data = self.log[curve_name]
-
                         curve_data = np.where(np.isnan(curve_data), 0, curve_data)
-
                         heatmap[:, c] = curve_data
 
                 # Assign colors using the YlGn color palette
-
                 cmap = plt.cm.YlGn
-
                 norm = plt.Normalize(vmin=0, vmax=max_value)
 
                 # Plot the heatmap
-
                 im = ax.imshow(heatmap, aspect='auto', cmap=cmap, interpolation='none', vmin=0, vmax=max_value,
                                extent=[0, total_curves, self.log[0].max(), 0])
 
                 # Set the colorbar
-                cbar = plt.colorbar(im, ax=ax, pad=0.02)
-                cbar.set_label('Values')
+                cbar = plt.colorbar(im, ax=ax, shrink=0.3, pad=0.001)
+                # cbar.set_label('Values')
 
                 # Hide the axis labels
                 ax.set_xticks([])
@@ -706,7 +705,7 @@ class LogViewer(object):
                     ax.yaxis.grid(True, which='major')
             else:
                 ax.set_yticks([])
-            ax.set_xticks([])
+                ax.set_xticks([])
 
             if a > 0 and a < len(self.axes) - 1:
                 track_title = track_names[a - 1]
@@ -737,10 +736,15 @@ class LogViewer(object):
             log_window_title = 'Log Viewer'
         self.fig.canvas.manager.window.title(log_window_title)
 
-        # add edit tools
+        # add edit tools to toolmanager
         tm = self.fig.canvas.manager.toolmanager
         tm.add_tool('Curve Edit', _CurveEditToggle)
         tm.add_tool('Bulk Shift', _BulkShiftToggle)
+
+        # add edit tools to toolbar
+        tb = self.fig.canvas.manager.toolbar
+        tb.add_tool('Curve Edit', 'Edit')
+        tb.add_tool('Bulk Shift', 'Edit')
 
         # remove non-useful tools
         self.fig.canvas.manager.toolmanager.remove_tool('forward')
@@ -854,9 +858,7 @@ class _CurveEditToggle(ToolToggleBase):
     Curve edit toggle for toolbar. Allows redrawing curves graphically
     in matplotlib.
     """
-
     description = 'Curve Draw Edit'
-    radio_group = 'PetroPy'
 
     file_dir = os.path.dirname(__file__)
     image = os.path.join(file_dir, 'data', 'images', 'draw.png')
@@ -891,9 +893,7 @@ class _BulkShiftToggle(ToolToggleBase):
     Bulk shift toggle for toolbar. Allows bulk shifting curves
     graphically in matplotlib.
     """
-
     description = 'Bulk Shift Edit'
-    radio_group = 'PetroPy'
 
     file_dir = os.path.dirname(__file__)
     image = os.path.join(file_dir, 'data', 'images', 'bulk.png')

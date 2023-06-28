@@ -236,6 +236,11 @@ def electrofacies(
         size = len(components) // 20
         size = 1024 if size > 1000 else 100 if size < 100 else size
 
+        # Initialize dictionaries to store cluster labels and averages for each method
+        cluster_labels = {}
+        cluster_averages = {}
+        cluster_membership_scores = {}
+
         for method, curve_name in zip(clustering_methods, curve_names):
             clustering_param = clustering_params.get(method, {})
             model = None  # Initialize model variable
@@ -272,6 +277,8 @@ def electrofacies(
                     curve_names.append(membership_curve)
                     membership_curve_names.append(membership_curve)
                 output_template = parsing_membership_track(template_xml_path, membership_curve_names)
+                cluster_labels[method] = labels
+                cluster_membership_scores[method] = membership_scores
             else:
                 raise ValueError(f"Unknown clustering method: {method}")
 
@@ -287,10 +294,37 @@ def electrofacies(
 
                 else:
                     labels = model.fit_predict(clustering_input) + 1
+                # Calculate cluster averages
+                cluster_labels[method] = labels
+
+                cluster_data = pd.DataFrame(clustering_input,
+                                            columns=['Variable_' + str(i) for i in range(clustering_input.shape[1])])
+                cluster_data['Cluster'] = labels
+
+                cluster_averages[method] = cluster_data.groupby('Cluster').mean()
 
             print(f'{len(np.unique(labels))} electrofacies assigned.')
             df.loc[not_null_rows, curve_name] = labels
             print(f'Done!')
+
+        # Store average log responses in a table
+        table_data = []
+        columns = ['Method', 'Cluster'] + ['Variable_' + str(i) for i in range(clustering_input.shape[1])]
+        for method, cluster_avg in cluster_averages.items():
+            labels = cluster_labels[method]
+            method_data = [[method, label] + cluster_avg.loc[label].values.tolist() for label in
+                           sorted(pd.unique(labels))]
+            table_data.extend(method_data)
+
+        # Add membership scores for fuzzy clustering
+        for method, membership_scores in cluster_membership_scores.items():
+            labels = cluster_labels[method]
+            membership_data = [[method, label] + membership_scores[i].tolist() for i, label in
+                               enumerate(sorted(pd.unique(labels)))]
+            table_data.extend(membership_data)
+
+        table_df = pd.DataFrame(table_data, columns=columns)
+        print(table_df)
 
         for log, df in zip(logs, dfs):
 

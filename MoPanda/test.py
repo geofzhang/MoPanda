@@ -91,14 +91,12 @@ else:
 
 # View and modify logs
 
-# # logViewer for electrofacies
-# viewer = LogViewer(log, template_xml_path=output_template, top=4500, height=500)
-
-# # logViewer for salinity
-# viewer = LogViewer(log, template_defaults='salinity', top=4500, height=500)
-
-# logViewer for permeability
-viewer = LogViewer(log, template_defaults=xml_template, top=4500, height=500)
+# logViewer for scoping purpose, it will mask undesired electrofacies for a better spotting
+if xml_template == 'scoping':
+    viewer = LogViewer(log, template_defaults=xml_template, top=4500, height=500)
+elif xml_template == 'permeability':
+    # logViewer for permeability
+    viewer = LogViewer(log, template_defaults=xml_template, top=4500, height=500)
 
 viewer.show()
 

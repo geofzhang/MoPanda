@@ -765,8 +765,9 @@
 
     <RWA_N>
         <RWA_N/>
-        <RWA/>
         <RWA_D/>
+	<RWA_HILT/>
+        <RWA/>
     </RWA_N>
 
     <SALINITY_N>
@@ -792,4 +793,24 @@
         <UMAA/>
         <UMAA_FZ/>
     </UMAA_N>
+
+    <TEMP_N>
+	<TEMP_N/>
+	<TEMP_D/>
+	<TEMP/>
+    </TEMP_N>
+
+    <PRESSURE_N>
+	<PRESSURE_N/>
+	<PRESSURE_D/>
+	<BHPR/>
+	<BHPR_ADT/>
+    </PRESSURE_N>
+
+    <POR_N>
+	<POR_N/>
+	<POR_D/>
+	<POR/>
+    </POR_N>
+
 </CURVES>

@@ -1,3 +1,4 @@
+import math
 import os
 import re
 import xml.etree.ElementTree as ET
@@ -189,28 +190,65 @@ class Log(LASFile):
     def fluid_properties(self, top=0, bottom=100000, mast=67,
                          temp_grad=0.015, press_grad=0.5, rws=0.1, rwt=70,
                          rmfs=0.4, rmft=100, gas_grav=0.67, oil_api=38, p_sep=100,
-                         t_sep=100, yn2=0, yco2=0, yh2s=0, yh20=0, rs=0,
-                         lith_grad=1.03, biot=0.8, pr=0.25):
+                         t_sep=100, ppc_a=668, yn2=0, yco2=0, yh2s=0, yh20=0, rs=0,
+                         lith_grad=1.03, biot=0.8, pr=0.25, tds='bekeratlas'):
         # fluid property calculations
+
+        # Load depth (ft)/ temperature (F)/ pressure (psi)
         depth_index = np.intersect1d(np.where(self[0] >= top)[0],
                                      np.where(self[0] < bottom)[0])
         depths = self[0][depth_index]
+        print(depths)
+        if 'TEMP_N' in self.curves:
+            form_temp = self.curves['TEMP_N']
+        else:
+            form_temp = mast + temp_grad * depths
 
-        form_temp = mast + temp_grad * depths
-        pore_press = press_grad * depths
+        if 'PRESSURE_N' in self.curves:
+            pore_press = self.curves['PRESSURE_N']
+        else:
+            pore_press = press_grad * depths
+
+        if 'POR_N' in self.curves:
+            porosity = self.curves['POR_N']
+        elif 'TCMR' in self.curves:
+            porosity = self.curves['TCMR']
+        else:
+            porosity = np.sqrt(self.curves['NPHI_N']**2 + self.curves['DPHI_N']**2)
 
         # water properties
+        if 'RWA_N' in self.curves:
+            rwa = self.curves['RWA_N']
+        # Load Rwa if log is available
+        else:
+        # Rwa calculation, if not available already
+            rwa = (porosity ** 2.15) * self.curves['RESDEEP_N'] / 0.62   # Humble Equation
+        # Rmfa/Rmca caclulation
+        rmfa = (porosity ** 2.15) * self.curves['RESSHAL_N'] / 0.62   # Humble Equation
+
+        # Rwa at room temperature 75 degree F
+        rwa75 = (form_temp + 6.77) / (75 + 6.77) * rwa
+        rmfa75 = (form_temp + 6.77) / (75 + 6.77) * rmfa
+
         rw = (rwt + 6.77) / (form_temp + 6.77) * rws
         rmf = (rmft + 6.77) / (form_temp + 6.77) * rmfs
 
-        rw68 = (rwt + 6.77) / (68 + 6.77) * rws
-        rmf68 = (rmft + 6.77) / (68 + 6.77) * rws
+        rw75 = (rwt + 6.77) / (75 + 6.77) * rws
+        rmf75 = (rmft + 6.77) / (75 + 6.77) * rws
+
+        # NaCl equivalent salinity calculation
+        if tds == 'geoloil':
+            tds_nacl = 1 / (rwa75 - 0.0123) / (1.79 * 0.0001)     # GeolOil's method
+        elif tds == 'crain':
+            tds_nacl = 40000 / form_temp / (rwa ** 1.14)      # Crain's method
+        else:
+            tds_nacl = 10 ** ((3.562 - (math.log(rwa75-0.0123)))/0.955)    # Baker Atlas's method from Crain's PH
 
         # weight percent total dissolved solids
-        xsaltw = 10 ** (-0.5268 * (np.log10(rw68)) ** 3 - 1.0199 * (np.log10(rw68)) ** 2 - 1.6693 * (
-            np.log10(rw68)) - 0.3087)
-        xsaltmf = 10 ** (-0.5268 * (np.log10(rmf68)) ** 3 - 1.0199 * (np.log10(rmf68)) ** 2 - 1.6693 * (
-            np.log10(rmf68)) - 0.3087)
+        xsaltw = 10 ** (-0.5268 * (np.log10(rw75)) ** 3 - 1.0199 * (np.log10(rw75)) ** 2 - 1.6693 * (
+            np.log10(rw75)) - 0.3087)
+        xsaltmf = 10 ** (-0.5268 * (np.log10(rmf75)) ** 3 - 1.0199 * (np.log10(rmf75)) ** 2 - 1.6693 * (
+            np.log10(rmf75)) - 0.3087)
 
         # bw for reservoir water
         dvwt = -1.0001 * 10 ** -2 + 1.33391 * 10 ** -4 * form_temp + \
@@ -410,10 +448,16 @@ class Log(LASFile):
                                   (2.6 * pore_press[pp_gt_bp] ** 1.187 * 10 ** (-0.000039 * pore_press[pp_gt_bp] - 5))
 
         output_curves = [
-            {'mnemonic': 'PORE_PRESS', 'data': pore_press, 'unit': 'psi',
+            {'mnemonic': 'SALINITY_N', 'data': tds_nacl, 'unit': 'ppm',
+             'descr': 'Calculated NaCl Equivalent Salinity'},
+
+            {'mnemonic': 'POR_N', 'data': porosity, 'unit': 'v/v',
+             'descr': 'Calculated Porosity'},
+
+            {'mnemonic': 'PRESSURE_N', 'data': pore_press, 'unit': 'psi',
              'descr': 'Calculated Pore Pressure'},
 
-            {'mnemonic': 'RES_TEMP', 'data': form_temp, 'unit': 'F',
+            {'mnemonic': 'TEMP_N', 'data': form_temp, 'unit': 'F',
              'descr': 'Calculated Reservoir Temperature'},
 
             {'mnemonic': 'NES', 'data': nes, 'unit': 'psi',

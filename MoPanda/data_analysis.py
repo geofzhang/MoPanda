@@ -72,7 +72,7 @@ def plot_pc_crossplot(components, pca_loading, labels, num_top_logs):
 
     ax.legend()
     ax.set_title('Clustering result with relative log importance')
-    plt.show()
+    plt.show(block=False)
 
 
 def plot_cluster_error(cluster_range, error_scores):
@@ -91,7 +91,7 @@ def plot_cluster_error(cluster_range, error_scores):
     plt.xlabel('Number of Clusters')
     plt.ylabel('Classification Error')
     plt.title('Number of Clusters vs Classification Error')
-    plt.show()
+    plt.show(block=False)
 
 
 def plot_pca_variance(variance_ratio):
@@ -130,7 +130,7 @@ def plot_pca_variance(variance_ratio):
 
     plt.title('PCA Variance Ratio and Cumulative Variance')
 
-    plt.show()
+    plt.show(block=False)
 
 
 def plot_pca_subplots(components, pca_loading, labels, num_top_logs, variance_ratio):
@@ -217,4 +217,4 @@ def plot_pca_subplots(components, pca_loading, labels, num_top_logs, variance_ra
     ax2.set_box_aspect(1)
 
     plt.tight_layout()
-    plt.show()
+    plt.show(block=False)
