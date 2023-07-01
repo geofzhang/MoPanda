@@ -5,7 +5,29 @@ import plotly.colors as colors
 from adjustText import adjust_text
 import plotly.express as px
 import matplotlib.pyplot as plt
+from scipy.interpolate import interp1d
 
+def fill_null(df):
+    for column in df.columns:
+        null_counts = df[column].isnull().sum()
+        if null_counts > 50:
+            # Use polynomial interpolation
+            df[column].interpolate(method='polynomial', order=2, inplace=True)
+        elif 20 < null_counts <= 50:
+            # Use spline interpolation
+            null_indices = np.where(df[column].isnull())[0]
+            valid_indices = np.where(df[column].notnull())[0]
+            if null_indices[0] < valid_indices[0]:
+                valid_indices = np.concatenate(([null_indices[0]], valid_indices))
+            if null_indices[-1] > valid_indices[-1]:
+                valid_indices = np.concatenate((valid_indices, [null_indices[-1]]))
+            spline_func = interp1d(valid_indices, df[column].values[valid_indices], kind='cubic')
+            df[column].values[null_indices] = spline_func(null_indices)
+        else:
+            # Use smooth interpolation
+            df[column].interpolate(method='linear', inplace=True)
+
+    return df
 
 def plot_pc_crossplot(components, pca_loading, labels, num_top_logs):
     """

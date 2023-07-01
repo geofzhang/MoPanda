@@ -6,48 +6,11 @@ import pandas as pd
 import numpy as np
 import datetime as dt
 from scipy.optimize import nnls
-from scipy.interpolate import interp1d
 from lasio import LASFile, CurveItem
-
-
-def check_file(output_file):
-    if os.path.exists(output_file):
-        while True:
-            response = input(
-                f"The output file '{output_file}' already exists. Do you want to overwrite it? (Y/N): ").strip().lower()
-            if response == 'y':
-                break
-            elif response == 'n':
-                return False
-            else:
-                print("Invalid response. Please enter 'Y' or 'N'.")
-    return True
-
+from utils import check_file
 
 # Major Log subclass that inherits the LASFile superclass and perform expansive mathematical petrophysics analysis and
-# data analysis.
-def fill_null(df):
-    for column in df.columns:
-        null_counts = df[column].isnull().sum()
-        if null_counts > 50:
-            # Use polynomial interpolation
-            df[column].interpolate(method='polynomial', order=2, inplace=True)
-        elif 20 < null_counts <= 50:
-            # Use spline interpolation
-            null_indices = np.where(df[column].isnull())[0]
-            valid_indices = np.where(df[column].notnull())[0]
-            if null_indices[0] < valid_indices[0]:
-                valid_indices = np.concatenate(([null_indices[0]], valid_indices))
-            if null_indices[-1] > valid_indices[-1]:
-                valid_indices = np.concatenate((valid_indices, [null_indices[-1]]))
-            spline_func = interp1d(valid_indices, df[column].values[valid_indices], kind='cubic')
-            df[column].values[null_indices] = spline_func(null_indices)
-        else:
-            # Use smooth interpolation
-            df[column].interpolate(method='linear', inplace=True)
-
-    return df
-
+# data analysis.LOG
 
 class Log(LASFile):
     def __init__(self, file_ref=None, **kwargs):

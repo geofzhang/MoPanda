@@ -20,7 +20,6 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 mpl.rcParams['backend'] = 'TkAgg'
 plt.rcParams['toolbar'] = 'toolmanager'
 
-
 class LogViewer(object):
     """LogViewer
 
@@ -31,12 +30,13 @@ class LogViewer(object):
     """
 
     def __init__(self, log, template_xml_path=None,
-                 template_defaults=None, top=None, height=None):
+                 template_defaults=None, top=None, height=None, masking=None):
         self.log = log
         self.template_xml_path = template_xml_path
         self.template_defaults = template_defaults
         self.top = top
         self.height = height
+        self.masking = masking
 
         ### private parameters for graphically editing curves ###
 
@@ -361,7 +361,12 @@ class LogViewer(object):
                 for c, curve in enumerate(track):
                     ### names ###
                     if 'curve_name' in curve.attrib:
-                        curve_name = curve.attrib['curve_name']
+                        if masking.get('status') and curve.attrib['curve_name'] in masking.get('curves_to_mask'):
+                            original_name = curve.attrib['curve_name']
+                            curve_name = f'{original_name}_masked'
+                            print(curve_name)
+                        else:
+                            curve_name = curve.attrib['curve_name']
                     else:
                         raise ValueError('Curve Name required in \
                                    template at %s' % template_xml_path)

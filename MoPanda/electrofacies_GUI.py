@@ -15,10 +15,10 @@ from sklearn.cluster import (
 import PySimpleGUI as sg
 import skfuzzy as fuzz
 import matplotlib.pyplot as plt
-from data_analysis import plot_pc_crossplot, plot_pca_variance, plot_pca_subplots
-from Log import fill_null
+from data_analysis import plot_pc_crossplot, plot_pca_variance, plot_pca_subplots, fill_null
 import xml.etree.ElementTree as ET
 import xml.dom.minidom as minidom
+from utils import ColorCoding
 
 
 def select_curves(log):
@@ -75,7 +75,9 @@ def electrofacies(
         clustering_methods=None,
         clustering_params=None,
         cluster_range=None,
-        template=None
+        template=None,
+        lithology_color_coding=None,
+        masking=None
 ):
     """
     Electrofacies function to group intervals by rock type. Also
@@ -138,7 +140,8 @@ def electrofacies(
         window.close()
 
         if event == "-DEFAULT_CURVES-":
-            curves = ['CAL_N', 'CGR_N', 'SP_N', 'RESDEEP_N', 'NPHI_N', 'RHOB_N', 'PE_N']
+            curves = ['CAL_N', 'CGR_N', 'SP_N', 'DTC_N', 'POR_N', 'RESDEEP_N', 'RESSHAL_N', 'NPHI_N', 'DPHI_N',
+                      'RHOB_N', 'PE_N']
         elif event == "-MANUAL_CURVES-":
             curves = select_curves(logs[0])
 
@@ -292,16 +295,14 @@ def electrofacies(
                     # plot_pc_crossplot(components, pca_loadings, labels, num_top_logs)
                     plot_pca_subplots(components, pca_loadings, labels, num_top_logs, pc_full_variance)
 
+                    df.loc[not_null_rows, 'FACIES_KMEANS'] = labels  # Store labels in 'FACIES_KMEANS' column
+
                 else:
                     labels = model.fit_predict(clustering_input) + 1
-                # Calculate cluster averages
                 cluster_labels[method] = labels
 
-                cluster_data = pd.DataFrame(clustering_input,
-                                            columns=['Variable_' + str(i) for i in range(clustering_input.shape[1])])
-                cluster_data['Cluster'] = labels
-
-                cluster_averages[method] = cluster_data.groupby('Cluster').mean()
+                cluster_averages[method] = df.loc[not_null_rows, curves].groupby(
+                    labels).mean()  # Use actual curves for averages
 
             print(f'{len(np.unique(labels))} electrofacies assigned.')
             df.loc[not_null_rows, curve_name] = labels
@@ -309,12 +310,13 @@ def electrofacies(
 
         # Store average log responses in a table
         table_data = []
-        columns = ['Method', 'Cluster'] + ['Variable_' + str(i) for i in range(clustering_input.shape[1])]
+        columns = ['Method', 'Cluster'] + curves
         for method, cluster_avg in cluster_averages.items():
-            labels = cluster_labels[method]
-            method_data = [[method, label] + cluster_avg.loc[label].values.tolist() for label in
-                           sorted(pd.unique(labels))]
-            table_data.extend(method_data)
+            if method != 'fuzzy':
+                labels = cluster_labels[method]
+                method_data = [[method, label] + cluster_avg.loc[label].values.tolist() for label in
+                               sorted(pd.unique(labels))]
+                table_data.extend(method_data)
 
         # Add membership scores for fuzzy clustering
         for method, membership_scores in cluster_membership_scores.items():
@@ -324,11 +326,52 @@ def electrofacies(
             table_data.extend(membership_data)
 
         table_df = pd.DataFrame(table_data, columns=columns)
-        print(table_df)
+        facies_df = assign_lithofacies(table_df)
+
+        # Save the table to an Excel file with UWI and methods in the file name
+        uwi = df['UWI'].iloc[0]  # Assuming UWI is the same for all rows in the DataFrame
+        file_name = f"output/{uwi}_electrofacies_mean_log_responses.xlsx"
+        facies_df.to_excel(file_name, index=False)
+        print(f"Mean log responses of electrofacies saved as '{file_name}'")
+
+        # Assign lithofacies to original df
+        for method, curve_name in zip(clustering_methods, curve_names):
+            labels = df.loc[not_null_rows, curve_name]
+            lithofacies = facies_df.loc[facies_df['Method'] == method].set_index('Cluster')['Lithofacies']
+
+            df.loc[not_null_rows, f'{curve_name}_ASSIGNED'] = labels.map(lithofacies)
+
+        labels = None
+        if 'kmeans' in method:
+            labels = df.loc[not_null_rows, 'FACIES_KMEANS_ASSIGNED']
+        elif 'agglom' in method:
+            labels = df.loc[not_null_rows, 'FACIES_AGGLOM_ASSIGNED']
+        else:
+            labels = df.loc[not_null_rows, f'{curve_name}_ASSIGNED']
+
+        cc = ColorCoding()
+        cc.litho_color(lithology_color_coding)
+        if masking.get('status'):
+            facies_to_drop = masking.get('facies_to_drop')
+            label_list = cc.name_to_label(facies_to_drop)
+            # Find rows with labels not included in the converted label list
+            mask = ~labels.isin(label_list)
 
         for log, df in zip(logs, dfs):
 
             uwi = log.well['UWI'].value
+            if masking.get('status'):
+                for masking_curve in masking.get('curves_to_mask'):
+                    data = np.empty(len(log[0]))
+                    data[:] = np.nan
+                    depth_index = df.loc[(df.UWI == uwi) & mask, 'DEPTH_INDEX']
+                    data[depth_index] = df.loc[(df.UWI == uwi) & mask, masking_curve]
+                    log.append_curve(
+                        f'{masking_curve}_masked',
+                        np.copy(data),
+                        descr=f'Masked {masking_curve}',
+                    )
+
             for v, vector in enumerate(pc.components_):
                 v += 1
                 pc_curve = f'PC{v}'
@@ -338,10 +381,14 @@ def electrofacies(
                 else:
                     data = np.empty(len(log[0]))
                     data[:] = np.nan
-                depth_index = components.loc[components.UWI == uwi, 'DEPTH_INDEX']
-                data[depth_index] = np.copy(components.loc[components.UWI == uwi, pc_curve])
+                if masking.get('status'):
+                    depth_index = components.loc[(components.UWI == uwi) & mask, 'DEPTH_INDEX']
+                    data[depth_index] = np.copy(components.loc[(components.UWI == uwi) & mask, pc_curve])
+                else:
+                    depth_index = components.loc[components.UWI == uwi, 'DEPTH_INDEX']
+                    data[depth_index] = np.copy(components.loc[components.UWI == uwi, pc_curve])
 
-                log.add_curve(
+                log.append_curve(
                     pc_curve,
                     np.copy(data),
                     descr=f'Principal Component {v} from electrofacies',
@@ -353,13 +400,34 @@ def electrofacies(
                 else:
                     data = np.empty(len(log[0]))
                     data[:] = np.nan
-
-                depth_index = df.loc[df.UWI == uwi, 'DEPTH_INDEX']
-                data[depth_index] = df.loc[df.UWI == uwi, curve_name]
-                log.add_curve(
+                if masking.get('status'):
+                    depth_index = df.loc[(df.UWI == uwi) & mask, 'DEPTH_INDEX']
+                    data[depth_index] = df.loc[(df.UWI == uwi) & mask, curve_name]
+                else:
+                    depth_index = df.loc[df.UWI == uwi, 'DEPTH_INDEX']
+                    data[depth_index] = df.loc[df.UWI == uwi, curve_name]
+                log.append_curve(
                     curve_name,
                     np.copy(data),
                     descr='Electrofacies',
+                )
+
+                curve_facies = f'{curve_name}_ASSIGNED'
+                if curve_facies in log.keys():
+                    data = log[curve_facies]
+                else:
+                    data = np.empty(len(log[0]))
+                    data[:] = np.nan
+                if masking.get('status'):
+                    depth_index = df.loc[(df.UWI == uwi) & mask, 'DEPTH_INDEX']
+                    data[depth_index] = df.loc[(df.UWI == uwi) & mask, curve_facies]
+                else:
+                    depth_index = df.loc[df.UWI == uwi, 'DEPTH_INDEX']
+                    data[depth_index] = df.loc[df.UWI == uwi, curve_facies]
+                log.append_curve(
+                    curve_facies,
+                    np.copy(data),
+                    descr=f'Auto-Assigned Lithofacies for {curve_name}',
                 )
     if output_template is None:
         return logs
@@ -475,3 +543,44 @@ def parsing_membership_track(template_xml_path, curve_names):
     tree.write(output_template, encoding="utf-8", xml_declaration=True)
 
     return output_template
+
+
+def assign_lithofacies(df):
+    # Calculate median values for CAL_N and SP_N
+    cal_median = df['CAL_N'].median()
+
+    # Initialize lithofacies column with 'Unknown' value
+    df['Lithofacies'] = 'Unknown'
+
+    for index, row in df.iterrows():
+        cluster = row['Cluster']
+        cal = row['CAL_N']
+        sp = row['SP_N']
+        nphi = row['NPHI_N']
+        dphi = row['DPHI_N']
+        rhob = row['RHOB_N']
+        pe = row['PE_N']
+        cgr = row['CGR_N']
+
+        if abs(cal - cal_median) > 0.15 * cal_median or sp < 25:
+            df.loc[index, 'Lithofacies'] = 99  # 'Anomaly'
+        elif nphi < 0.02 and dphi < 0.01 and rhob > 2.7 and pe > 4.5:
+            df.loc[index, 'Lithofacies'] = 9  # 'Anhydrite'
+        elif nphi < 0.02 and dphi > 0.3 and rhob < 2.1 and pe > 4.5:
+            df.loc[index, 'Lithofacies'] = 8  # 'Halite'
+        elif pe > 3.35 and nphi - dphi > 0.05:
+            df.loc[index, 'Lithofacies'] = 7  # 'Dolomite'
+        elif pe > 3.5 and nphi - dphi < 0.05:
+            df.loc[index, 'Lithofacies'] = 6  # 'Limestone'
+        elif rhob < 2.7 and pe < 2.8 and nphi > 0.20 and dphi > 0.15:
+            df.loc[index, 'Lithofacies'] = 1  # 'Sandstone'
+        elif 3 > pe > 2.7 and cgr > 60:
+            df.loc[index, 'Lithofacies'] = 2  # 'Shaly Sandstone'
+        elif pe > 3 and cgr > 80:
+            df.loc[index, 'Lithofacies'] = 5  # 'Black Shale'
+        elif pe > 3 and cgr > 60:
+            df.loc[index, 'Lithofacies'] = 4  # 'Shale'
+        else:
+            df.loc[index, 'Lithofacies'] = 98  # 'Else'
+
+    return df

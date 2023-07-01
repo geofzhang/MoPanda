@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FACIES>
+  <lithology name="Sandstone" label="1" color="#ffda4f">
+  </lithology>
+  <lithology name="Shaly Sandstone" label="2" color="#b3b300">
+  </lithology>
+  <lithology name="Silty Shale" label="3" color="#cca836">
+  </lithology>
+  <lithology name="Shale" label="4" color="#cc8236">
+  </lithology>
+  <lithology name="Black Shale" label="5" color="#8d8d8d">
+  </lithology>
+  <lithology name="Limestone" label="6" color="#00abff">
+  </lithology>
+  <lithology name="Dolomite" label="7" color="#00bccd">
+  </lithology>
+  <lithology name="Halite" label="8" color="#df1daf">
+  </lithology>
+  <lithology name="Anhydrite" label="9" color="#9a009a">
+  </lithology>
+  <lithology name="Gypsum" label="10" color="#9b618c">
+  </lithology>
+  <lithology name="Else" label="98" color="#ff4d4d">
+  </lithology>
+  <lithology name="Anomaly" label="99" color="#120000">
+  </lithology>
+</FACIES>
