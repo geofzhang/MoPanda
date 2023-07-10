@@ -140,7 +140,7 @@ def electrofacies(
         window.close()
 
         if event == "-DEFAULT_CURVES-":
-            curves = ['CAL_N', 'CGR_N', 'SP_N', 'DTC_N', 'POR_N', 'RESDEEP_N', 'RESSHAL_N', 'NPHI_N', 'DPHI_N',
+            curves = ['CAL_N', 'CGR_N', 'SP_N', 'DTC_N', 'POR_N', 'RESDEEP_N', 'NPHI_N', 'DPHI_N',
                       'RHOB_N', 'PE_N']
         elif event == "-MANUAL_CURVES-":
             curves = select_curves(logs[0])

@@ -2,6 +2,7 @@ import pandas as pd
 import xml.etree.ElementTree as ET
 import os
 
+
 def check_file(output_file):
     if os.path.exists(output_file):
         while True:
@@ -14,6 +15,7 @@ def check_file(output_file):
             else:
                 print("Invalid response. Please enter 'Y' or 'N'.")
     return True
+
 
 class ColorCoding:
     def __init__(self):
@@ -62,3 +64,36 @@ class ColorCoding:
         else:
             color = self.df.loc[self.df['name'] == lithology_name, 'color']
             return color.values[0] if not color.empty else None
+
+
+def update_columns(log, column_a, column_b, method='left'):
+    """
+    Updates column_a with not-null values from column_b and vice versa according to the specified method.
+
+    Arguments:
+    log -- pandas DataFrame.
+    column_a, column_b -- names of the columns in the DataFrame.
+    method -- a string indicating the updating method: 'left', 'right', or 'mean' (default 'left').
+            'left' keeps the column_a and only update not-null values from column_b
+            'right' keeps the column_b and only update not-null values from column_a
+            'mean' keeps the column_a and only update not-null values from column_b
+
+    Returns:
+    Updated pandas Series according to the updating method.
+    """
+    if column_a not in log.columns or column_b not in log.columns:
+        raise ValueError(f"Columns {column_a} and/or {column_b} not found in DataFrame.")
+
+    if method == 'left':
+        # Update column_a with not null values of column_b
+        log[column_a].update(log[column_b])
+        return log[column_a]
+    elif method == 'right':
+        # Update column_b with not null values of column_a
+        log[column_b].update(log[column_a])
+        return log[column_b]
+    elif method == 'mean':
+        # Return mean of column_a and column_b, ignoring NA
+        return log[[column_a, column_b]].mean(axis=1)
+    else:
+        raise ValueError("Method must be one of 'left', 'right', or 'mean'.")

@@ -161,33 +161,40 @@ class Log(LASFile):
         depth_index = np.intersect1d(np.where(self[0] >= top)[0],
                                      np.where(self[0] < bottom)[0])
         depths = self[0][depth_index]
-        print(depths)
+
+        if 'PR' in self.curves:
+            pr = self['PR'][depth_index]
+        else:
+            pr = pr
+
         if 'TEMP_N' in self.curves:
-            form_temp = self.curves['TEMP_N']
+            form_temp = self['TEMP_N'][depth_index]
+            temp_grad = (self['TEMP_N'][depth_index[-1]]-self['TEMP_N'][depth_index[0]])/(depths[-1]-depths[0])
         else:
             form_temp = mast + temp_grad * depths
 
         if 'PRESSURE_N' in self.curves:
-            pore_press = self.curves['PRESSURE_N']
+            pore_press = self['PRESSURE_N'][depth_index]
+            press_grad = (self['PRESSURE_N'][depth_index[-1]]-self['PRESSURE_N'][depth_index[0]])/(depths[-1]-depths[0])
         else:
             pore_press = press_grad * depths
 
         if 'POR_N' in self.curves:
-            porosity = self.curves['POR_N']
+            porosity = self['POR_N'][depth_index]
         elif 'TCMR' in self.curves:
-            porosity = self.curves['TCMR']
+            porosity = self['TCMR'][depth_index]
         else:
-            porosity = np.sqrt(self.curves['NPHI_N']**2 + self.curves['DPHI_N']**2)
+            porosity = np.sqrt(self['NPHI_N'][depth_index]**2 + self['DPHI_N'][depth_index]**2)
 
         # water properties
         if 'RWA_N' in self.curves:
-            rwa = self.curves['RWA_N']
+            rwa = self['RWA_N'][depth_index]
         # Load Rwa if log is available
         else:
         # Rwa calculation, if not available already
-            rwa = (porosity ** 2.15) * self.curves['RESDEEP_N'] / 0.62   # Humble Equation
-        # Rmfa/Rmca caclulation
-        rmfa = (porosity ** 2.15) * self.curves['RESSHAL_N'] / 0.62   # Humble Equation
+            rwa = (porosity ** 2.15) * self['RESDEEP_N'][depth_index] / 0.62   # Humble Equation
+        # Rmfa/Rmca calculation
+        rmfa = (porosity ** 2.15) * self['RESSHAL_N'][depth_index] / 0.62   # Humble Equation
 
         # Rwa at room temperature 75 degree F
         rwa75 = (form_temp + 6.77) / (75 + 6.77) * rwa
@@ -205,7 +212,7 @@ class Log(LASFile):
         elif tds == 'crain':
             tds_nacl = 40000 / form_temp / (rwa ** 1.14)      # Crain's method
         else:
-            tds_nacl = 10 ** ((3.562 - (math.log(rwa75-0.0123)))/0.955)    # Baker Atlas's method from Crain's PH
+            tds_nacl = 10 ** ((3.562 - (np.log10(rwa75-0.0123)))/0.955)    # Baker Atlas's method from Crain's PH
 
         # weight percent total dissolved solids
         xsaltw = 10 ** (-0.5268 * (np.log10(rw75)) ** 3 - 1.0199 * (np.log10(rw75)) ** 2 - 1.6693 * (
@@ -417,7 +424,7 @@ class Log(LASFile):
             {'mnemonic': 'POR_N', 'data': porosity, 'unit': 'v/v',
              'descr': 'Calculated Porosity'},
 
-            {'mnemonic': 'PRESSURE_N', 'data': pore_press, 'unit': 'psi',
+            {'mnemonic': 'PORE_PRESS', 'data': pore_press, 'unit': 'psi',
              'descr': 'Calculated Pore Pressure'},
 
             {'mnemonic': 'TEMP_N', 'data': form_temp, 'unit': 'F',
@@ -596,7 +603,7 @@ class Log(LASFile):
 
         required_curves_from_fluid_properties = ['RW', 'RHO_HC',
                                                  'RHO_W', 'NPHI_HC',
-                                                 'NPHI_W', 'RES_TEMP',
+                                                 'NPHI_W', 'TEMP_N',
                                                  'NES', 'PORE_PRESS']
 
         for curve in required_curves_from_fluid_properties:
@@ -1145,7 +1152,7 @@ class Log(LASFile):
                 if cec <= 0:
                     cec = 10 ** (1.9832 * vclay - 2.4473)
 
-                rw77 = self['RESDEEP_N'][i] * (self['RES_TEMP'][i] + 6.8) \
+                rw77 = self['RESDEEP_N'][i] * (self['TEMP_N'][i] + 6.8) \
                        / 83.8
 
                 b = 4.6 * (1 - 0.6 * np.exp(-0.77 / rw77))
@@ -1172,7 +1179,7 @@ class Log(LASFile):
                           self['BO'][i]  # Mmbbl per sample rate
 
                 elif hc_class == 'GAS':
-                    langslope = (-0.08 * self['RES_TEMP'][i] + 2 * ro + 22.75) / 2
+                    langslope = (-0.08 * self['TEMP_N'][i] + 2 * ro + 22.75) / 2
                     gas_ads = langslope * vom * 100 * \
                               (self['PORE_PRESS'][i] / (self['PORE_PRESS'][i] + lang_press))
 

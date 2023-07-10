@@ -6,7 +6,7 @@ import os
 
 las_file_path: str = './data/las/Denova1_modified.las'
 tops_file_path = './data/log_info/tops.csv'
-xml_template = 'permeability'
+xml_template = 'salinity'
 lithology_color_coding = './data/color_code/lithology_color_code.xml'
 excel_output = './output/Denova1_test.xlsx'
 start_depth = 1000
@@ -48,7 +48,6 @@ df = log.log_qc(start_depth, end_depth)
 
 # Auto aliasing log names
 log.aliasing()
-# print(log.curves)
 
 # Load formation tops
 log.load_tops(csv_path=tops_file_path, depth_type='MD', source='CA')
@@ -57,13 +56,15 @@ log.load_tops(csv_path=tops_file_path, depth_type='MD', source='CA')
 # viewer = LogViewer(log, top=3950, height=1000)
 # viewer.show()
 
-# # Calculate formation fluid property parameters
-# log.load_fluid_properties()
-# log.formation_fluid_properties(formations=[], parameter='default')
-#
-# # Calculate multimineral model
-# log.load_multilateral_parameters()
-# log.formation_multimineral_model(formations=[], parameter='default')
+# Calculate formation fluid property parameters
+log.load_fluid_properties()
+log.formation_fluid_properties(formations=[], parameter='default')
+
+# Calculate multimineral model
+log.load_multilateral_parameters()
+log.formation_multimineral_model(formations=[], parameter='default')
+
+# Add calibrated salinity from
 
 # Electrofacies
 logs = [log]  # List of Log objects
