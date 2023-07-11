@@ -164,6 +164,7 @@ def electrofacies(
         'raw': 'default_raw_template.xml',
         'full': 'default_full_template.xml',
         'electrofacies': 'default_electrofacies_template.xml',
+        'lithofacies': 'default_lithofacies_template.xml',
         'salinity': 'default_salinity_template.xml',
         'permeability': 'default_permeability_template.xml'
     }

@@ -1,4 +1,6 @@
-from Log import Log
+from matplotlib import pyplot as plt
+
+from las_io import LasIO
 from graphs import LogViewer
 from electrofacies_GUI import electrofacies
 from utils import ColorCoding as cc
@@ -6,7 +8,7 @@ import os
 
 las_file_path: str = './data/las/Denova1_modified.las'
 tops_file_path = './data/log_info/tops.csv'
-xml_template = 'salinity'
+xml_template = 'lithofacies'
 lithology_color_coding = './data/color_code/lithology_color_code.xml'
 excel_output = './output/Denova1_test.xlsx'
 start_depth = 1000
@@ -23,14 +25,14 @@ masking = {
 color = cc().litho_color(lithology_color_coding)
 
 # Load LAS file
-log = Log(las_file_path)
+log = LasIO(las_file_path)
 
 # # Display well head information
 # print(log.well)
 #
 # # Display drilling parameters
 # print(log.params)
-
+#
 # # Export converted data (raw) to either .csv or .xlsx
 # log.export_csv()
 # log.export_excel()
@@ -56,13 +58,13 @@ log.load_tops(csv_path=tops_file_path, depth_type='MD', source='CA')
 # viewer = LogViewer(log, top=3950, height=1000)
 # viewer.show()
 
-# Calculate formation fluid property parameters
-log.load_fluid_properties()
-log.formation_fluid_properties(formations=[], parameter='default')
-
-# Calculate multimineral model
-log.load_multilateral_parameters()
-log.formation_multimineral_model(formations=[], parameter='default')
+# # Calculate formation fluid property parameters
+# log.load_fluid_properties()
+# log.formation_fluid_properties(formations=[], parameter='default')
+#
+# # Calculate multimineral model
+# log.load_multilateral_parameters()
+# log.formation_multimineral_model(formations=[], parameter='default')
 
 # Add calibrated salinity from
 
@@ -101,15 +103,42 @@ if xml_template == 'electrofacies':
 else:
     electrofacies(logs, formations, curves, log_scale=log_scale,
                   n_components=n_components, curve_names=curve_names,
-                  clustering_methods=['kmeans', 'agglom'],
+                  clustering_methods=['kmeans'],
                   clustering_params=clustering_params,
                   template=xml_template,
                   lithology_color_coding=lithology_color_coding,
                   masking=masking)
 print(log.curves)
 
+# find way to name well, looking for well name#
+# or UWI or API #
+
+if len(log.well['WELL'].value) > 0:
+    well_name = log.well['WELL'].value
+elif len(str(log.well['UWI'].value)) > 0:
+    well_name = str(log.well['UWI'].value)
+elif len(log.well['API'].value) > 0:
+    well_name = str(log.well['API'].value)
+else:
+    well_name = 'UNKNOWN'
+well_name = well_name.replace('.', '')
+
 # View and modify logs
-viewer = LogViewer(log, template_defaults=xml_template, top=4500, height=500, masking=masking)
+viewer = LogViewer(log, template_defaults=xml_template, top=4500, height=500, lithology_color_coding=color,
+                   masking=masking)
+viewer.fig.set_size_inches(17, 11)
+
+# add well_name to title of LogViewer #
+
+viewer.fig.suptitle(well_name, fontweight='bold', fontsize=30)
+
+# add logo to top left corner #
+
+logo_im = plt.imread('./logo/ca_logo.png')
+logo_ax = viewer.fig.add_axes([0, 0.85, 0.2, 0.2])
+logo_ax.imshow(logo_im)
+logo_ax.axis('off')
+
 viewer.show()
 
 # Export converted data (raw) to either .csv or .xlsx

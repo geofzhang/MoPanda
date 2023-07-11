@@ -20,6 +20,7 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 mpl.rcParams['backend'] = 'TkAgg'
 plt.rcParams['toolbar'] = 'toolmanager'
 
+
 class LogViewer(object):
     """LogViewer
 
@@ -30,12 +31,13 @@ class LogViewer(object):
     """
 
     def __init__(self, log, template_xml_path=None,
-                 template_defaults=None, top=None, height=None, masking=None):
+                 template_defaults=None, top=None, height=None, lithology_color_coding=None, masking=None):
         self.log = log
         self.template_xml_path = template_xml_path
         self.template_defaults = template_defaults
         self.top = top
         self.height = height
+        self.lithology_color_coding = lithology_color_coding
         self.masking = masking
 
         ### private parameters for graphically editing curves ###
@@ -55,6 +57,7 @@ class LogViewer(object):
         default_templates_paths = {
             'raw': 'default_raw_template.xml',
             'full': 'default_full_template.xml',
+            'lithofacies': 'default_lithofacies_template.xml',
             'electrofacies': 'default_electrofacies_template.xml',
             'salinity': 'default_salinity_template.xml',
             'permeability': 'default_permeability_template.xml'
@@ -508,13 +511,31 @@ class LogViewer(object):
                                              baseline,
                                              x,
                                              color=fill_color)
+                        elif 'fill_lithology_color' in curve.attrib:
+                            color_index = np.unique(x)
+                            for ci in sorted(color_index):
+                                color = self.lithology_color_coding.loc[
+                                    self.lithology_color_coding['label'] == ci, 'color'].values
+                                if len(color) > 0:
+                                    color = np.array(color).item(0)
+                                else:
+                                    color = '#000000'
+                                if curve.attrib['fill'] == 'left':
+                                    baseline = left
+                                elif curve.attrib['fill'] == 'right':
+                                    baseline = right
+
+                                ax.fill_betweenx(self.log[0],
+                                                 baseline,
+                                                 x,
+                                                 where=x >= ci,
+                                                 color=color)
 
                         elif 'fill_color_map' in curve.attrib:
                             cmap_name = curve.attrib['fill_color_map']
                             cmap = plt.get_cmap(cmap_name)
                             if len(np.unique(x)) < 50:
                                 color_index = np.unique(x[~np.isnan(x)])
-                                print(color_index)
                             else:
                                 if curve.attrib['fill'] == 'left':
                                     color_index = np.linspace(left_color_value, right_color_value, num=50)
