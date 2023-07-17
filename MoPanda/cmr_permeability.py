@@ -18,7 +18,7 @@ ls = np.linspace(np.log10(0.3), np.log10(3000), len(t2_data[0]))  # Generate log
 
 # Create a new Excel workbook
 output_file_name = os.path.basename(input_file_path)
-output_file_path = './output/' + os.path.splitext(output_file_name)[0] + 'Decomposed_Gaussian_Distributions.xlsx'
+output_file_path = './output/' + os.path.splitext(output_file_name)[0] + '_Decomposed_Gaussian_Distributions.xlsx'
 workbook = Workbook()
 
 # Create a sheet for mean, sigma, sum, BVI, FFI, and T2lm values
@@ -30,7 +30,7 @@ peak_decomp_sheet.cell(row=1, column=2, value='TCMR')
 peak_decomp_sheet.cell(row=1, column=3, value='BVI')
 peak_decomp_sheet.cell(row=1, column=4, value='FFI')
 peak_decomp_sheet.cell(row=1, column=5, value='T2lm')
-
+peak_decomp_sheet.cell(row=1, column=6, value='Permeability')
 
 
 # Define a function to calculate T2lm
@@ -69,7 +69,9 @@ for i in range(len(t2_data)):
     try:
         # Perform curve fitting with the specified number of components
         num_components = 4  # Change this to the desired number of components
-        p0 = [1. / num_components, (np.log10(3000) / num_components), 1.] * num_components
+        p0 = []
+        for m in range(num_components):
+            p0.extend([1. / num_components, np.log10(0.3) + m * (np.log10(3000)-np.log10(0.3)) / (num_components - 1), 1.])
         bounds = ([0., np.log10(0.3), 1e-3] * num_components, [1., np.log10(3000), 1.5] * num_components)
         maxfev = 5000  # Increase the maximum number of function evaluations
         coeff, var_matrix = curve_fit(multi_gauss, ls, distribution, p0=p0, bounds=bounds, maxfev=maxfev)
@@ -100,6 +102,9 @@ for i in range(len(t2_data)):
         # Calculate the T2lm using the residual distribution as the weights
         t2lm = calculate_T2lm(ls, residual_distribution)
 
+        # Calculate the permeability using the FFI and T2lm
+        permeability = 4 * ffi ** 4 * t2lm ** 2
+
         # Write the mean, sigma, sum, BVI, FFI, and T2lm values to the mean_sigma_sum_bvi_ffi_t2lm_sheet
         row = i + 2  # Start from row 2, since row 1 is for column headers
         peak_decomp_sheet.cell(row=row, column=1, value=depths[i])
@@ -107,9 +112,10 @@ for i in range(len(t2_data)):
         peak_decomp_sheet.cell(row=row, column=3, value=bvi)
         peak_decomp_sheet.cell(row=row, column=4, value=ffi)
         peak_decomp_sheet.cell(row=row, column=5, value=t2lm)
+        peak_decomp_sheet.cell(row=row, column=6, value=permeability)
 
         for j in range(num_components):
-            column = j * 3 + 6  # Adjust the column based on the Gaussian component
+            column = j * 3 + 7  # Adjust the column based on the Gaussian component
             peak_decomp_sheet.cell(row=1, column=column, value=f'Mean{j + 1}')
             peak_decomp_sheet.cell(row=1, column=column + 1, value=f'Sigma{j + 1}')
             peak_decomp_sheet.cell(row=1, column=column + 2, value=f'Sum{j + 1}')
