@@ -108,7 +108,7 @@ else:
                   template=xml_template,
                   lithology_color_coding=lithology_color_coding,
                   masking=masking)
-print(log.curves)
+# print(log.curves)
 
 # find way to name well, looking for well name#
 # or UWI or API #
