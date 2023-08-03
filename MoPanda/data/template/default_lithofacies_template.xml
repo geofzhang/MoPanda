@@ -34,7 +34,10 @@
     <curve display_name="RHOB" curve_name="RHOB_N" color="#FF0000" left="1.95" right="2.95"/>
     <curve display_name="NPHI" curve_name="NPHI_N" color="#0099CC" left="0.45" right="-0.15" line_style="--"/>
   </track>
+  <track display_name="Electrofacies" width="0.5" major_lines="1">
+    <curve display_name="" curve_name="FACIES_KMEANS" color="#000000" left="0" right="1" fill="left" fill_color_map="Paired" left_color_value="1" right_color_value="auto"/>
+  </track>
   <track display_name="Lithofacies" width="0.5" major_lines="1">
-    <curve display_name="KMEANS" curve_name="FACIES_KMEANS_ASSIGNED" left="0" right="1" fill="left" fill_lithology_color="True" />
+    <curve display_name="" curve_name="FACIES_KMEANS_ASSIGNED" left="0" right="1" fill="left" fill_lithology_color="True" />
   </track>
 </graph>

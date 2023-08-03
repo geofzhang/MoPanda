@@ -49,6 +49,11 @@
     <curve display_name="CAPILARY" curve_name="BFV" fill_color="#ffbf00"/>
     <curve display_name="FREE" curve_name="CMFF" fill_color="#4da6ff"/>
   </track>
+  <track display_name="PERMEABILITY" scale="log" width="1" major_lines="3">
+    <curve display_name="K_SDR" curve_name="K_SDR_D" color="#FF0000" right="10000" left="0.01"/>
+    <curve display_name="K_TIM" curve_name="K_TIM_D" color="#0080ff" right="10000" left="0.01"/>
+    <curve display_name="K_NEW" curve_name="K_NEW" color="#008000" right="10000" left="0.01" line_style="-" width="0.5" marker="^" marker_size="2"/>
+  </track>
   <track display_name="" width="1" major_lines="1">
     <curve display_name="KMEANS" curve_name="FACIES_KMEANS" color="#000000" left="0" right="1" fill="left" fill_color_map="Paired" left_color_value="1" right_color_value="8"/>
   </track>

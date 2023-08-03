@@ -155,7 +155,9 @@
         <G/>
         <GAB/>
         <GAM/>
+	<GAMM/>
         <GAM1/>
+	<GAMNAT/>
         <GAPI/>
         <GR/>
         <GR/>
@@ -236,6 +238,7 @@
         <HRLS/>
         <HSFLU/>
         <ILS/>
+	<LL3/>
         <LL8/>
         <LLA/>
         <M0R1/>
@@ -247,6 +250,8 @@
         <MSFL/>
         <PSHG/>
         <RES/>
+	<RES16N/>
+	<AM16/>
         <RILS/>
         <RLL2/>
         <RS/>
@@ -260,6 +265,7 @@
         <SFLR/>
         <SFLU/>
         <SN/>
+	<RSN/>
         <AHT2/>
         <AS20/>
         <ASRX/>
@@ -409,7 +415,6 @@
         <ILD/>
         <ILD4/>
         <LL/>
-        <LL3/>
         <LL7/>
         <LLD/>
         <M0R9/>
@@ -451,6 +456,7 @@
         <GRD/>
         <HRL4/>
         <LN/>
+	<RLN/>
         <M0R6/>
         <M1R6/>
         <M2R6/>
@@ -498,6 +504,8 @@
         <P34H/>
         <P34H_/>
         <P34H_UNC/>
+	<REST/>
+	<RES64N/>
         <RLL/>
     </RESDEEP_N>
 
@@ -545,6 +553,7 @@
         <HTNP/>
         <NCN/>
         <NCNL/>
+	<NEUT/>
     </NPHI_N>
 
     <DPHI_N>
@@ -738,6 +747,7 @@
 
     <SP_N>
         <SP_N/>
+	<ESP/>
         <HSP/>
         <SP/>
         <SPAR/>

@@ -1,16 +1,16 @@
 from matplotlib import pyplot as plt
 
-from las_io import LasIO
-from graphs import LogViewer
-from electrofacies_GUI import electrofacies
-from utils import ColorCoding as cc
-import os
+from EDA.MoPanda.MoPanda.modules.las_io import LasIO
+from EDA.MoPanda.MoPanda.modules.graphs import LogViewer
+from EDA.MoPanda.MoPanda.modules.electrofacies import electrofacies
+from EDA.MoPanda.MoPanda.modules.utils import ColorCoding as cc
 
 las_file_path: str = './data/las/Denova1_modified.las'
 tops_file_path = './data/log_info/tops.csv'
 xml_template = 'lithofacies'
 lithology_color_coding = './data/color_code/lithology_color_code.xml'
-excel_output = './output/Denova1_test.xlsx'
+excel_output = './output/Denova1_lithofacies.xlsx'
+las_output = './output/Denova1_aliased.las'
 start_depth = 1000
 end_depth = 5000
 masking = {
@@ -58,6 +58,7 @@ log.load_tops(csv_path=tops_file_path, depth_type='MD', source='CA')
 # viewer = LogViewer(log, top=3950, height=1000)
 # viewer.show()
 
+
 # # Calculate formation fluid property parameters
 # log.load_fluid_properties()
 # log.formation_fluid_properties(formations=[], parameter='default')
@@ -73,10 +74,10 @@ logs = [log]  # List of Log objects
 formations = ['SKULL_CREEK_SH', 'LAKOTA_UPPER', 'LAKOTA_LOWER', 'MORRISON',
               'DAYCREEK', 'FLOWERPOT_SH', 'LYONS', 'SUMNER_SATANKA',
               'STONE_CORRAL']  # List of formation names (optional)
-curves = []
-# curves = ['CGR_N', 'SP_N', 'NPHI_N', 'DPHI_N', 'PE_N', 'SGR_N',
-#           'RESSHAL_N', 'RESDEEP_N', 'DTS_N', 'DTC_N', 'TCMR', 'T2LM', 'RHOMAA_N', 'UMAA_N',
-#           'RWA_N']  # List of curve names (optional)
+# curves = []
+curves = ['CAL_N', 'RHOB_N', 'CGR_N', 'SP_N', 'NPHI_N', 'DPHI_N', 'PE_N', 'SGR_N',
+          'RESDEEP_N', 'DTS_N', 'DTC_N', 'TCMR', 'T2LM', 'RHOMAA_N', 'UMAA_N',
+          'RWA_N']  # List of curve names (optional)
 log_scale = ['RESSHAL_N', 'RESDEEP_N']  # List of curve names to preprocess on a log scale (optional)
 n_components = 0.85  # Number of principal components to keep (optional)
 curve_names = []  # List of names for output electrofacies curves (optional)
@@ -108,7 +109,7 @@ else:
                   template=xml_template,
                   lithology_color_coding=lithology_color_coding,
                   masking=masking)
-# print(log.curves)
+print(log.curves)
 
 # find way to name well, looking for well name#
 # or UWI or API #
