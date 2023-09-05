@@ -9,7 +9,7 @@ import xml.etree.ElementTree as ET
 
 def get_root_names():
     file_dir = os.path.dirname(__file__)
-    alias_path = os.path.join(file_dir, 'data/log_info', 'log_alias.xml')
+    alias_path = os.path.join(file_dir, '../data/log_info', 'log_alias.xml')
 
     if not os.path.isfile(alias_path):
         raise ValueError('No alias file at: %s' % alias_path)

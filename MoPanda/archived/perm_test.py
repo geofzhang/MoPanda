@@ -9,9 +9,9 @@ from EDA.MoPanda.MoPanda.modules.utils import ColorCoding as cc
 import os
 
 # Parameter Input
-las_file_path = './data/las/Denova1_modified.las'
-tops_file_path = './data/log_info/tops.csv'
-t2_file_path = './data/cmr/Denova1_T2_DIST_3800FT.xlsx'
+las_file_path = '../data/las/Denova1_modified.LAS'
+tops_file_path = '../data/log_info/tops.csv'
+t2_file_path = '../data/cmr/Denova1_T2_DIST_3800FT.xlsx'
 xml_template = 'permeability'
 lithology_color_coding = './data/color_code/lithology_color_code.xml'
 excel_output = './output/Denova1_perm.xlsx'
