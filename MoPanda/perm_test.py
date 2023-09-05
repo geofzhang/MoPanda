@@ -54,7 +54,7 @@ if xml_template == 'permeability':
         gd = GaussianDecomposition(df)
         # Plot the Gaussian decomposition for a specific index
         index = index
-        gd.gaussian_decomp.decomposition_single(index, num_components=7, auto_search=False)
+        gd.decomposition_single(index, num_components=7, auto_search=False)
 
 
 # predictor = WellLogPredictor(log)

@@ -3,25 +3,23 @@ from EDA.MoPanda.MoPanda.modules.graphs import LogViewer
 from EDA.MoPanda.MoPanda.modules.electrofacies import electrofacies
 from EDA.MoPanda.MoPanda.modules.utils import ColorCoding as cc
 import os
-from data_analysis import WellLogPredictor
 
 import pandas as pd
-from cmr_permeability import GaussianDecomposition, perform_gaussian_decomposition
+from EDA.MoPanda.MoPanda.modules.cmr_permeability import GaussianDecomposition, perform_gaussian_decomposition
 import numpy as np
 from matplotlib import pyplot as plt
 import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog
 
+
 # Import other required modules and classes
 
-class LogCalculator(tk.Tk):
-    def __init__(self):
-        super().__init__()
-
-        self.title("Template-based Log Viewer")
-        self.geometry("600x400")
-
+class LogCalculator(tk.Frame):
+    def __init__(self, master=None):
+        super().__init__(master)
+        self.grid(sticky=(tk.N, tk.W, tk.E, tk.S))  # Embed it into the provided frame
         self.create_widgets()
+
         self.lithology_color_coding = './data/color_code/lithology_color_code.xml'
 
         self.t2_browse_button = tk.Button(self, text="Browse", command=self.browse_t2, state=tk.DISABLED)
@@ -103,7 +101,6 @@ class LogCalculator(tk.Tk):
             self.display_decomp_checkbox.config(state=tk.DISABLED)
             self.t2_browse_button.config(state=tk.DISABLED)  # Added this line
 
-
     def browse_las(self):
         file_path = filedialog.askopenfilename(filetypes=[("LAS Files", "*.las")])
         if file_path:
@@ -132,7 +129,8 @@ class LogCalculator(tk.Tk):
         masking = {
             'status': False,
             'mode': 'white',
-            'facies_to_drop': ['Silty Shale', 'Shaly Sandstone', 'Shale', 'Black Shale', 'Halite', 'Anhydrite', 'Gypsum',
+            'facies_to_drop': ['Silty Shale', 'Shaly Sandstone', 'Shale', 'Black Shale', 'Halite', 'Anhydrite',
+                               'Gypsum',
                                'Anomaly', 'Else'],
             'curves_to_mask': ['SALINITY_N', 'RWA_N'],
         }
@@ -251,7 +249,7 @@ class LogCalculator(tk.Tk):
         # Provide a message box indicating that the processing is completed
         messagebox.showinfo("Processing Completed", "Data processing completed!")
 
+
 if __name__ == "__main__":
     app = LogCalculator()
     app.mainloop()
-

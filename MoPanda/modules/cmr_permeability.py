@@ -11,7 +11,7 @@ class GaussianDecomposition:
         self.df = df
         self.ls = np.linspace(np.log10(0.3), np.log10(3000), len(df.columns) - 1)
         self.file_name = file_name
-        self.cutoff = 50
+        self.cutoff = 10
 
     def multi_gauss(self, x, *params):
         result = np.zeros_like(x)
@@ -82,7 +82,7 @@ class GaussianDecomposition:
 
                 # Calculate the T2lm_2 using the residual distribution as the weights
                 t2lm_ffi = np.exp(np.sum(np.log(10 ** self.ls) * residual_distribution) / np.sum(residual_distribution))
-                permeability = 10 * bvi ** 3 * t2lm_bvi + 5000 * ffi ** 6 * t2lm_ffi ** 1.5
+                permeability = 10 * bvi ** 3 * t2lm_bvi + 3000 * ffi ** 4 * t2lm_ffi ** 1.5
 
                 # Write the values to the sheet
                 cell_values = [depths[row_idx], tcmr, bvi, ffi, t2lm_bvi, t2lm_ffi, permeability]
@@ -144,7 +144,7 @@ class GaussianDecomposition:
             p0.extend([1. / num_components,
                        np.log10(0.3) + j * (np.log10(3000) - np.log10(0.3)) / (num_components - 1), 1.])
         bounds = ([0., np.log10(0.3), 1e-3] * num_components, [1., np.log10(3000), 1.5] * num_components)
-        coeff, _ = curve_fit(self.multi_gauss, self.ls, distribution, p0=p0, bounds=bounds)
+        coeff, _ = curve_fit(self.multi_gauss, self.ls, distribution, p0=p0, bounds=bounds, maxfev=10000)
         gauss_components = [self.multi_gauss(self.ls, *coeff[j * 3: (j + 1) * 3]) for j in range(num_components)]
         gauss_sums = [np.sum(component) for component in gauss_components]
         # Calculate the BVI (Bulk Volume Irreducible) by summing the Gaussian components with 10**mean < 15
@@ -168,7 +168,7 @@ class GaussianDecomposition:
 
         # Calculate the T2lm_2 using the residual distribution as the weights
         t2lm_ffi = np.exp(np.sum(np.log(10 ** self.ls) * residual_distribution) / np.sum(residual_distribution))
-        permeability = 5 * bvi ** 4 * t2lm_bvi + 7 * ffi ** 4 * t2lm_ffi ** 2
+        permeability = 10 * bvi ** 3 * t2lm_bvi + 3000 * ffi ** 4 * t2lm_ffi ** 1.5
 
         print('bvi:', bvi)
         print('ffi:', ffi)
@@ -180,9 +180,9 @@ class GaussianDecomposition:
         plt.semilogx(10 ** self.ls, distribution, label='Measured')
         for j, component in enumerate(gauss_components):
             plt.semilogx(10 ** self.ls, component, label=f'Peak {j + 1}')
-        plt.xlabel('T2 (ms)')
-        plt.ylabel('Incremental Porosity (ft³/ft³)')
-        plt.title(f'Depth: {depths[index]} ft')
+        plt.xlabel('T$_2$ (ms)')
+        plt.ylabel('Incremental Porosity (ft$^3$/ft$^3$)')
+        plt.title(f'CMR Peak Decomposition \nDepth: {depths[index]} ft       Porosity: {(bvi+ffi)*100:.2f}%')
         plt.legend()
         plt.show()
 

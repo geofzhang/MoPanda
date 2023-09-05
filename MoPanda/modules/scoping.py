@@ -4,7 +4,7 @@ from tkinter import filedialog, messagebox
 from matplotlib import pyplot as plt
 import numpy as np
 from EDA.MoPanda.MoPanda.modules.las_io import LasIO
-from graphs import LogViewer
+from EDA.MoPanda.MoPanda.modules.graphs import LogViewer
 from EDA.MoPanda.MoPanda.modules.electrofacies import electrofacies
 from EDA.MoPanda.MoPanda.modules.utils import ColorCoding as cc
 

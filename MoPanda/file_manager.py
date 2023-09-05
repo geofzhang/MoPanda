@@ -183,12 +183,41 @@ def create_main_gui():
 
     # Tab 6 - Log Calculator
     tab6 = ttk.Frame(tab_control)
-    tab_control.add(tab6, text="Log Calculator")
+    tab_control.add(tab6, text="Log Calculator and Viewer")
     tab_control.pack(expand=1, fill="both")
 
-    # Button to open the LAS Viewer tab
-    open_las_viewer_button = tk.Button(tab6, text="Open Log Calculator", command=open_log_calculator_tab)
-    open_las_viewer_button.pack(pady=20)
+    # Create a main frame for this tab
+    log_cal_frame = ttk.Frame(tab6)
+
+    # Create a 3x3 grid
+    for i in range(3):
+        tab6.grid_rowconfigure(i, weight=1)
+        tab6.grid_columnconfigure(i, weight=1)
+
+    log_cal_frame.grid(row=0, column=1)
+
+    # Directly embed LogCalculator into tab6:
+    from EDA.MoPanda.MoPanda.modules.log_calculator import LogCalculator
+    LogCalculator(log_cal_frame)
+
+    # Tab 7 - CMR Permeability App
+    tab7 = ttk.Frame(tab_control)
+    tab_control.add(tab7, text="CMR Permeability")
+    tab_control.pack(expand=1, fill="both")
+
+    # Create a main frame for this tab
+    cmr_frame = ttk.Frame(tab7)
+
+    # Create a 3x3 grid
+    for i in range(3):
+        tab7.grid_rowconfigure(i, weight=1)
+        tab7.grid_columnconfigure(i, weight=1)
+
+    cmr_frame.grid(row=0, column=1)
+
+    # Embed CMRPermeabilityApp inside the cmr_frame
+    from EDA.MoPanda.MoPanda.modules.curvefitter import CMRPermeabilityApp
+    CMRPermeabilityApp(cmr_frame)
 
     # Start the main event loop
     app.mainloop()

@@ -39,13 +39,9 @@ file_name = os.path.basename(t2_file_path)
 df = pd.read_excel(t2_file_path)
 num_components = 7
 
-# log = perform_gaussian_decomposition(log, df, file_name, num_components=4)
-#
-# # predictor = WellLogPredictor(log)
-
 # Plot the Gaussian decomposition for a specific index
 gd = GaussianDecomposition(df)
-index = 1717
+index = 1655
 gd.decomposition_single(index=index, num_components=num_components, auto_search=False)
 
 

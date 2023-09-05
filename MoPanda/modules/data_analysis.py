@@ -1,7 +1,5 @@
 import numpy as np
-import plotly.graph_objects as go
-import plotly.subplots as sp
-import plotly.colors as colors
+from pykrige.ok import OrdinaryKriging
 from adjustText import adjust_text
 import plotly.express as px
 import matplotlib.pyplot as plt
@@ -20,6 +18,12 @@ from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 from scipy.optimize import curve_fit
 import os
+import tkinter as tk
+import pandas as pd
+import lasio
+from sklearn.preprocessing import MinMaxScaler
+from keras.models import Sequential
+from keras.layers import LSTM, Dense
 
 
 def fit_curve(csv_file, x1_column, y1_column, x2_column, y2_column, z_column):
@@ -59,8 +63,9 @@ def fit_curve(csv_file, x1_column, y1_column, x2_column, y2_column, z_column):
 
     rmse = np.sqrt(np.mean((z_pred - z_data) ** 2))
     # Calculate K_calib for all rows
-    data_predict['K_calib'] = a1_fit * data_predict[x1_column] ** m1_fit * data_predict[y1_column] ** n1_fit + a2_fit * data_predict[
-        x2_column] ** m2_fit * data_predict[y2_column] ** n2_fit
+    data_predict['K_calib'] = a1_fit * data_predict[x1_column] ** m1_fit * data_predict[y1_column] ** n1_fit + a2_fit * \
+                              data_predict[
+                                  x2_column] ** m2_fit * data_predict[y2_column] ** n2_fit
 
     # Write the updated DataFrame back to CSV
     output_file = os.path.join('../output', os.path.basename(csv_file))
@@ -307,12 +312,13 @@ def plot_pca_subplots(components, pca_loading, labels, num_top_logs, variance_ra
     plt.show(block=False)
 
 
-class WellLogPredictor:
+class InWellPredictor:
     def __init__(self, log=None):
         self.root = tk.Tk()
         self.root.title("Well Log Predictor")
 
-        self.dataframe = log.df()
+        self.filename = None
+        self.dataframe = None
         self.logs_to_select = []
         self.log_to_predict = None
         self.depth_interval = []
@@ -336,16 +342,10 @@ class WellLogPredictor:
         self.predict_button = tk.Button(self.root, text="Predict", command=self.predict_button_click)
         self.predict_button.pack(anchor="center")
 
-        self.root.mainloop()
+        self.export_button = tk.Button(self.root, text="Export", command=self.export_dataframe)
+        self.export_button.pack(anchor="center")
 
-    def load_dataframe_button_click(self):
-        filename = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv")])
-        if filename:
-            try:
-                self.dataframe = pd.read_csv(filename, index_col=0)
-                messagebox.showinfo("Success", "DataFrame loaded successfully!")
-            except Exception as e:
-                messagebox.showerror("Error", f"Failed to load file: {e}")
+        self.root.mainloop()
 
     def check_dependencies(self, packages):
         not_installed = []
@@ -361,14 +361,67 @@ class WellLogPredictor:
             subprocess.check_call(["pip", "install", package])
 
     def check_and_install_dependencies(self):
-        required_packages = ["pandas", "scikit-learn", "xgboost", "lightgbm", "catboost"]
+        required_packages = ["pandas", "scikit-learn", "xgboost", "lightgbm", "catboost", "openpyxl", "pykrige"]
         not_installed = self.check_dependencies(required_packages)
         if not_installed:
             messagebox.showinfo("Dependency Check", "Installing required dependencies...")
             self.install_dependencies(not_installed)
             messagebox.showinfo("Dependency Check", "Dependencies installed successfully!")
 
+    @staticmethod
+    def create_cancel_button(window):
+        """
+        Creates a Cancel button for the given window.
+        """
+        cancel_button = tk.Button(window, text="Cancel", command=window.destroy)
+        cancel_button.pack(anchor="center")
+        return cancel_button
+
+    def load_dataframe_button_click(self):
+        """
+        Loads a dataframe based on user's file selection.
+        """
+        self.filename = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv"), ("Excel files", "*.xlsx")])
+        if self.filename:
+            try:
+                if self.filename.endswith('.csv'):
+                    self.dataframe = pd.read_csv(self.filename, index_col=0)
+                elif self.filename.endswith('.xlsx'):
+                    if 'Curves' not in pd.ExcelFile(self.filename).sheet_names:
+                        messagebox.showerror("Error", "The .xlsx file does not have a 'Curves' sheet.")
+                        return
+                    self.dataframe = pd.read_excel(self.filename, sheet_name='Curves', index_col=0)
+                messagebox.showinfo("Success", "DataFrame loaded successfully!")
+            except Exception as e:
+                messagebox.showerror("Error", f"Failed to load file: {e}")
+
+    def write_predictions_to_excel(self, predictions, column_name):
+        """
+        Write the predictions back to the original Excel file.
+        """
+        try:
+            # Read the original excel file
+            xls = pd.ExcelFile(self.filename)
+            writer = pd.ExcelWriter(self.filename, engine='xlsxwriter')
+
+            # Loop through all sheets and write them back
+            for sheet_name in xls.sheet_names:
+                if sheet_name == 'Curves':
+                    # Update the dataframe with the new predictions
+                    self.dataframe[column_name] = predictions
+                    self.dataframe.to_excel(writer, sheet_name=sheet_name, index=True)
+                else:
+                    sheet_df = pd.read_excel(xls, sheet_name=sheet_name)
+                    sheet_df.to_excel(writer, sheet_name=sheet_name, index=False)
+
+            writer.save()
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to write to file: {e}")
+
     def select_logs(self):
+        """
+        Opens a window for the user to select logs.
+        """
         window = tk.Toplevel(self.root)
         window.title("Select Logs")
         window.geometry("300x300")
@@ -420,9 +473,13 @@ class WellLogPredictor:
         apply_button = tk.Button(window, text="Apply", command=apply_selection)
         apply_button.pack(anchor="center")
 
+        self.create_cancel_button(window)
         window.mainloop()
 
     def select_log_to_predict(self):
+        """
+        Opens a window for the user to select a log for prediction.
+        """
         window = tk.Toplevel(self.root)
         window.title("Select Log to Predict")
         window.geometry("300x300")
@@ -459,9 +516,13 @@ class WellLogPredictor:
         apply_button = tk.Button(window, text="Apply", command=apply_selection)
         apply_button.pack(anchor="center")
 
+        self.create_cancel_button(window)
         window.mainloop()
 
     def select_depth_interval(self):
+        """
+        Opens a window for the user to select depth intervals.
+        """
         window = tk.Toplevel(self.root)
         window.title("Select Depth Interval")
         window.geometry("300x300")
@@ -485,6 +546,7 @@ class WellLogPredictor:
         apply_button = tk.Button(window, text="Apply", command=apply_selection)
         apply_button.pack(anchor="center")
 
+        self.create_cancel_button(window)
         window.mainloop()
 
     def train_and_predict(self, model):
@@ -493,7 +555,6 @@ class WellLogPredictor:
             (self.dataframe.index <= self.depth_interval[0]) | (self.dataframe.index >= self.depth_interval[1])
             ].copy()  # Make a copy of the DataFrame
 
-        print(df_train.describe())
         # Drop missing values in the selected logs
         logs_to_dropna = self.logs_to_select + [self.log_to_predict]
         df_train.dropna(subset=logs_to_dropna, inplace=True)
@@ -523,7 +584,23 @@ class WellLogPredictor:
         rmse = mean_squared_error(y_test, y_pred, squared=False)
         return rmse
 
+    def export_dataframe(self):
+        """
+        Saves the predicted results to the original Excel file.
+        """
+        try:
+            if self.filename.endswith('.csv'):
+                self.dataframe.to_csv(self.filename)
+            elif self.filename.endswith('.xlsx'):
+                self.dataframe.to_excel(self.filename, sheet_name='Curves')
+            messagebox.showinfo("Success", "Predicted results saved successfully!")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save DataFrame: {e}")
+
     def predict_button_click(self):
+        """
+        Predicts the values based on user selections and displays the result.
+        """
         self.check_and_install_dependencies()
 
         if self.dataframe is None or self.dataframe.empty:
@@ -617,27 +694,31 @@ class WellLogPredictor:
                     ].copy()
 
                 # Drop missing values in the selected logs
-                logs_to_dropna = self.logs_to_select + [self.log_to_predict]
+                logs_to_dropna = self.logs_to_select
                 df_pred.dropna(subset=logs_to_dropna, inplace=True)
 
                 # Predict the target values using the selected model
                 X_pred = df_pred[self.logs_to_select]
                 predicted_values = regressor.predict(X_pred)
 
-                print(predicted_values)
-
                 # Add a new column with the predicted values to the dataframe
                 new_column_name = f"{self.log_to_predict}_PRE"
+
+                self.dataframe[new_column_name] = self.dataframe[self.log_to_predict]
+
                 self.dataframe.loc[(self.dataframe.index >= self.depth_interval[0]) & (
                         self.dataframe.index <= self.depth_interval[1]), new_column_name] = predicted_values
-                print(self.dataframe[new_column_name])
+
                 # Create a new window to display the results
                 result_window = tk.Toplevel(self.root)
                 result_window.title("Prediction Results")
 
+                # Create a frame to pack both table and scrollbar
+                frame = tk.Frame(result_window)
+                frame.pack(fill="both", expand=True)
+
                 # Create a Treeview widget for displaying the table
-                table = ttk.Treeview(result_window, show="headings")
-                table.pack(fill="both", expand=True)
+                table = ttk.Treeview(frame, show="headings")
 
                 # Define the columns and their headers
                 table["columns"] = ("Depth", self.log_to_predict, new_column_name)
@@ -658,9 +739,12 @@ class WellLogPredictor:
                     table.insert("", "end", values=(interval, value, pred_value))
 
                 # Add a scrollbar to the table
-                scrollbar = ttk.Scrollbar(result_window, orient="vertical", command=table.yview)
+                scrollbar = ttk.Scrollbar(frame, orient="vertical", command=table.yview)
                 scrollbar.pack(side="right", fill="y")
                 table.configure(yscrollcommand=scrollbar.set)
+
+                # Now pack the table after configuring the scrollbar
+                table.pack(fill="both", expand=True)
 
                 messagebox.showinfo("Success", "Predicted values appended to the original dataframe.")
                 model_selection_window.destroy()
@@ -668,8 +752,12 @@ class WellLogPredictor:
             apply_model_button = tk.Button(model_selection_window, text="Apply", command=apply_model_selection)
             apply_model_button.pack(anchor="center")
 
+            self.create_cancel_button(model_selection_window)
             model_selection_window.mainloop()
 
         self.logs_to_select = []
         self.log_to_predict = None
         self.depth_interval = []
+
+
+

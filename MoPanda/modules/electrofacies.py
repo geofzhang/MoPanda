@@ -15,10 +15,10 @@ from sklearn.cluster import (
 import PySimpleGUI as sg
 import skfuzzy as fuzz
 import matplotlib.pyplot as plt
-from data_analysis import plot_pc_crossplot, plot_pca_variance, plot_pca_subplots, fill_null
+from EDA.MoPanda.MoPanda.modules.data_analysis import plot_pc_crossplot, plot_pca_variance, plot_pca_subplots, fill_null
 import xml.etree.ElementTree as ET
 import xml.dom.minidom as minidom
-from utils import ColorCoding
+from EDA.MoPanda.MoPanda.modules.utils import ColorCoding
 
 
 def select_curves(log):

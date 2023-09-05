@@ -1,4 +1,9 @@
-from EDA.MoPanda.MoPanda.modules.data_analysis import WellLogPredictor
+from EDA.MoPanda.MoPanda.modules.data_analysis import InWellPredictor
+from EDA.MoPanda.MoPanda.modules.las_io import LasIO
+import os
+las_file_path: str = './data/las/Denova1_modified.las'
 
-WellLogPredictor()
+# Load LAS file
+log = LasIO(las_file_path)
+InWellPredictor(log)
 
