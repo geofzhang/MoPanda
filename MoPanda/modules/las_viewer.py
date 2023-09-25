@@ -1,8 +1,9 @@
+import os
 import tkinter as tk
 from tkinter import filedialog, messagebox
-from EDA.MoPanda.MoPanda.modules.las_io import LasIO
-import os
-import pandas as pd
+
+from modules.las_io import LasIO
+
 
 class WellLogGUI(tk.Toplevel):
     def __init__(self, parent):
@@ -109,6 +110,7 @@ class WellLogGUI(tk.Toplevel):
                 messagebox.showerror("Export Error", "No output path selected.")
         else:
             messagebox.showerror("Export Error", "No LAS file loaded.")
+
 
 if __name__ == "__main__":
     app = WellLogGUI()

@@ -1,6 +1,6 @@
 from dlis_io import dlis_viewer
-dlis_viewer()
 
+dlis_viewer()
 
 # from dlisio import dlis
 # import numpy as np

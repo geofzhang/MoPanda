@@ -1,17 +1,45 @@
+import os
 import tkinter as tk
-from tkinter import filedialog, messagebox, ttk
-import pandas as pd
+from tkinter import filedialog, messagebox
+import tensorflow as tf
 import lasio
-from sklearn.preprocessing import MinMaxScaler
-from keras.models import Sequential, load_model
-from keras.layers import Layer, LSTM, Dense
-from keras.callbacks import LambdaCallback, Callback
-from keras import backend as K
-from keras_self_attention import SeqSelfAttention
-from keras.optimizers import Adam
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
+from keras.callbacks import LambdaCallback, Callback, EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
+from keras.layers import LSTM, Dense, Dropout, Bidirectional, Conv1D, MaxPooling1D
+from keras.models import Sequential, load_model
+from keras.optimizers import Adam
+from keras_self_attention import SeqSelfAttention
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from scipy.stats import pearsonr
+from sklearn.preprocessing import MinMaxScaler
+from sklearn.model_selection import train_test_split
+from datetime import datetime
+from sklearn.utils import resample
+import joblib
+
+# Register the custom layer before loading the model
+tf.keras.utils.get_custom_objects()['SeqSelfAttention'] = SeqSelfAttention
+
+# List available GPUs
+gpus = tf.config.experimental.list_physical_devices('GPU')
+
+if gpus:
+    # GPU is available, print GPU information
+    for gpu in gpus:
+        print("Device name:", gpu.name)
+        print("Device type:", gpu.device_type)
+else:
+    print("No GPU detected.")
+
+os.environ["CUDA_VISIBLE_DEVICES"] = "0"  # Use GPU device 0
+
+# Configure GPU memory growth
+gpus = tf.config.experimental.list_physical_devices('GPU')
+if gpus:
+    for gpu in gpus:
+        tf.config.experimental.set_memory_growth(gpu, True)
 
 
 def impute_data(df, selected_logs, logs_to_log_transform):
@@ -43,12 +71,12 @@ def impute_data(df, selected_logs, logs_to_log_transform):
     # Apply log transformation to specific columns
     for col in logs_to_log_transform:
         if col in df.columns:
-            df[col] = np.where(df[col] <= 0, 0.000001, df[col])
+            df[col] = np.where(df[col] <= 0, 0.00001, df[col])
 
     # Apply log transformation to selected logs
     for log in logs_to_log_transform:
         if log in df.columns:
-            df[log] = np.log(df[log])
+            df[log] = np.log10(df[log])
 
     return df
 
@@ -87,27 +115,50 @@ def denormalize_data(df, scaler):
     return df_copy
 
 
-class SelfAttention(Layer):
-    def __init__(self, output_dim, **kwargs):
-        self.output_dim = output_dim
-        super(SelfAttention, self).__init__(**kwargs)
+# Segment the data
+def segment_data(data, window_size):
+    segments = []
+    for i in range(len(data) - window_size + 1):
+        segment = data[i:i + window_size]
+        segments.append(segment)
+    return np.array(segments)
 
-    def build(self, input_shape):
-        # Create a trainable weight variable for this layer.
-        self.kernel = self.add_weight(name='kernel',
-                                      shape=(input_shape[2], self.output_dim),
-                                      initializer='uniform',
-                                      trainable=True)
-        super(SelfAttention, self).build(input_shape)
 
-    def call(self, x, **kwargs):
-        mult_data = K.dot(x, self.kernel)
-        attention_weights = K.softmax(mult_data)
-        output = K.batch_dot(attention_weights, x, axes=[1, 1])
-        return output
+def zero_pad(data, target_length, padding_value=0):
+    """
+    Zero-pads the given data array along axis 0 to reach the target length.
+    :param data: np.array, the array to be padded.
+    :param target_length: int, the target length.
+    :param padding_value: float, the value to pad.
+    :return: np.array, zero-padded array.
+    """
+    pad_size = target_length - data.shape[0]
+    if pad_size > 0:
+        return np.pad(data, ((0, pad_size),) + tuple((0, 0) for _ in range(data.ndim - 1)), 'constant',
+                      constant_values=padding_value)
+    return data
 
-    def compute_output_shape(self, input_shape):
-        return (input_shape[0], input_shape[2], self.output_dim)
+
+def process_y_pred_denorm(y_pred_denorm):
+    # Assign 0 to inf values
+    y_pred_denorm = np.where(np.isinf(y_pred_denorm), np.nan, y_pred_denorm)
+
+    # Handle values below 0.00001 and above 1000000
+    y_pred_denorm = np.where(y_pred_denorm < 0.00001, 0.00001, y_pred_denorm)
+    y_pred_denorm = np.where(y_pred_denorm > 100000, 0.00001, y_pred_denorm)
+
+    # Remove values above 10k
+    y_pred_denorm = np.where(y_pred_denorm > 5000, np.nan, y_pred_denorm)
+
+    # Interpolate removed values
+    y_pred_denorm = np.interp(np.arange(len(y_pred_denorm)), np.where(~np.isnan(y_pred_denorm))[0],
+                              y_pred_denorm[~np.isnan(y_pred_denorm)])
+
+    # # Apply moving average with a window of 5
+    # y_pred_denorm = np.convolve(y_pred_denorm, np.ones(4) / 4, mode='same')
+
+    return y_pred_denorm
+
 
 class LossHistory(Callback):
     def __init__(self):
@@ -115,6 +166,7 @@ class LossHistory(Callback):
 
     def on_epoch_end(self, epoch, logs=None):
         self.losses.append(logs['loss'])
+
 
 class CrossWellPredictor(tk.Tk):
     def __init__(self):
@@ -126,23 +178,26 @@ class CrossWellPredictor(tk.Tk):
         self.training_wells = {}
         self.prediction_wells = {}
         self.losses = []
+        self.window_size = 1
+        self.imbalanced_data = False
+        self.method = 'LSTM'
 
         # Define logs to log-transform
-        self.logs_to_log_transform = ['RESDEEP_N', 'K_SDR_N', 'K_GD_N', 'K_TIM_N']
+        self.logs_to_log_transform = ['RESDEEP_N', 'K_SDR_N', 'K_GD_N', 'K_TIM_N', 'K_SDR', 'RESD_D']
 
         # Attributes to save the selected logs
         self.selected_x_logs = []
         self.selected_y_log = ""
 
         # GUI Elements
-        self.title("Cross Well Predictor")
+        self.title("Cross Well Log Predictor")
 
         # Importing Training Well Data - Top-left
         self.upload_train_button = tk.Button(self, text="Upload Training Wells",
                                              command=lambda: self.upload_well_data("train"))
         self.upload_train_button.grid(row=1, column=0, pady=5, padx=10)
 
-        self.train_listbox = tk.Listbox(self, height=10, width=60)
+        self.train_listbox = tk.Listbox(self, height=5, width=60)
         self.train_listbox.grid(row=0, column=0, columnspan=2, pady=5, padx=10)
 
         self.remove_train_button = tk.Button(self, text="Remove Selected Wells",
@@ -154,7 +209,7 @@ class CrossWellPredictor(tk.Tk):
                                                command=lambda: self.upload_well_data("predict"))
         self.upload_predict_button.grid(row=1, column=2, pady=5, padx=10)
 
-        self.predict_listbox = tk.Listbox(self, height=10, width=60)
+        self.predict_listbox = tk.Listbox(self, height=5, width=60)
         self.predict_listbox.grid(row=0, column=2, columnspan=2, pady=5, padx=10)
 
         self.remove_predict_button = tk.Button(self, text="Remove Selected Wells",
@@ -166,7 +221,7 @@ class CrossWellPredictor(tk.Tk):
                                               command=self.identify_common_logs)
         self.identify_logs_button.grid(row=3, column=0, pady=5, padx=10)
 
-        self.log_selection_listbox = tk.Listbox(self, height=10, width=60, selectmode=tk.MULTIPLE)
+        self.log_selection_listbox = tk.Listbox(self, height=7, width=60, selectmode=tk.MULTIPLE)
         self.log_selection_listbox.grid(row=2, column=0, columnspan=2, pady=5, padx=10)
 
         self.confirm_x_selection_button = tk.Button(self, text="Confirm", command=self.confirm_x_selection)
@@ -177,17 +232,25 @@ class CrossWellPredictor(tk.Tk):
                                                 command=self.identify_common_y_logs)
         self.identify_y_logs_button.grid(row=3, column=2, pady=5, padx=10)
 
-        self.y_log_selection_listbox = tk.Listbox(self, height=10, width=60, selectmode=tk.SINGLE)
+        self.y_log_selection_listbox = tk.Listbox(self, height=7, width=60, selectmode=tk.SINGLE)
         self.y_log_selection_listbox.grid(row=2, column=2, columnspan=2, pady=5, padx=10)
 
         self.confirm_y_selection_button = tk.Button(self, text="Confirm", command=self.confirm_y_selection)
         self.confirm_y_selection_button.grid(row=3, column=3, pady=10, padx=10)
 
+        self.correlation_analysis_button = tk.Button(self, text="Correlation Analysis",
+                                                     command=self.calculate_correlations)
+        self.correlation_analysis_button.grid(row=4, column=0, pady=5, padx=10)
+
+        self.calculate_uncertainty = tk.BooleanVar(value=False)
+        self.checkbox = tk.Checkbutton(self, text="Calculate Uncertainty", variable=self.calculate_uncertainty)
+        self.checkbox.grid(row=4, column=1, pady=5, padx=10)
+
         self.train_model_button = tk.Button(self, text="Train Model", command=self.train_model)
-        self.train_model_button.grid(row=4, column=0, pady=30, padx=10)
+        self.train_model_button.grid(row=4, column=2, pady=10, padx=10)
 
         self.predict_button = tk.Button(self, text="Predict for Wells", command=self.predict_for_each_well_display)
-        self.predict_button.grid(row=4, column=1, pady=30, padx=10)
+        self.predict_button.grid(row=4, column=3, pady=10, padx=10)
 
         self.progress_text = tk.Text(self, height=20, width=45)
         self.progress_text.grid(row=5, column=0, columnspan=2, pady=5, padx=10)
@@ -202,27 +265,70 @@ class CrossWellPredictor(tk.Tk):
         self.load_model_button = tk.Button(self, text="Load Model", command=self.load_model)
         self.load_model_button.grid(row=7, column=1, pady=10, padx=10)
 
+        # Entry widgets for hyperparameters
+        self.lstm_units_entry = tk.Entry(self)
+        self.lstm_units_entry.grid(row=6, column=2, pady=10, padx=10)
+        self.lstm_units_entry.insert(0, "200")  # Default value
+
+        self.learning_rate_entry = tk.Entry(self)
+        self.learning_rate_entry.grid(row=6, column=3, pady=10, padx=10)
+        self.learning_rate_entry.insert(0, "0.01")  # Default value
+
+        self.dropout_rate_entry = tk.Entry(self)
+        self.dropout_rate_entry.grid(row=7, column=2, pady=10, padx=10)
+        self.dropout_rate_entry.insert(0, "0.2")  # Default value
+
+        self.apply_hyperparams_button = tk.Button(self, text="Apply Hyperparameters",
+                                                  command=self.apply_hyperparameters)
+        self.apply_hyperparams_button.grid(row=7, column=3, columnspan=2, pady=10, padx=10)
+
+    def retrieve_hyperparameters(self):
+        """
+        Retrieve LSTM units, learning rate, and dropout rate specified by the user.
+        """
+        lstm_units = int(self.lstm_units_entry.get())
+        learning_rate = float(self.learning_rate_entry.get())
+        dropout_rate = float(self.dropout_rate_entry.get())  # Add this line to retrieve dropout rate
+        return lstm_units, learning_rate, dropout_rate
+
     def prepare_data(self):
         # Combine the data of all training wells
         combined_data = pd.concat(list(self.training_wells.values()), ignore_index=True)
+        if self.imbalanced_data:
+            # Identify imbalanced data and perform downsampling for Y < 0.01
+            minority_class = combined_data[combined_data[self.selected_y_log] > 0.1]
+            majority_class = combined_data[combined_data[self.selected_y_log] <= 0.1]
+
+            # Downsample the majority class to match the size of the minority class
+            majority_downsampled = resample(majority_class, replace=False, n_samples=len(minority_class),
+                                            random_state=42)
+
+            # Combine the minority and downsampled majority classes
+            combined_data = pd.concat([majority_downsampled, minority_class])
 
         # Handle missing data and apply log transformation to specified logs
         combined_data = impute_data(combined_data, self.selected_x_logs, self.logs_to_log_transform)
 
-        # Calculate the scaler based on all combined training well data
+        # Calculate the scaler based on the combined data
         combined_data, self.scaler = normalize_data(combined_data)
 
-        # Select X and Y data from the combined_data
-        X_data = combined_data[self.selected_x_logs].values
-        Y_data = combined_data[self.selected_y_log].values
+        # Split the data into a training set and a test set
+        train_data, test_data = train_test_split(combined_data, test_size=0.3, random_state=42)
 
-        # Reshape X_data for LSTM
-        X_data_reshaped = X_data.reshape(X_data.shape[0], 1, X_data.shape[1])
+        # Select X and Y data from the datasets
+        X_train = train_data[self.selected_x_logs].values
+        X_test = test_data[self.selected_x_logs].values
 
-        # Reshape Y_data
-        Y_data_reshaped = Y_data.reshape(-1, 1)
+        Y_train = train_data[self.selected_y_log].values
+        Y_test = test_data[self.selected_y_log].values
 
-        return X_data_reshaped, Y_data_reshaped
+        X_train = segment_data(X_train, self.window_size)
+        X_test = segment_data(X_test, self.window_size)
+
+        Y_train = Y_train[self.window_size - 1:]  # Match the Y labels to the last sample in each segment
+        Y_test = Y_test[self.window_size - 1:]
+
+        return X_train, Y_train, X_test, Y_test
 
     def upload_well_data(self, mode):
         file_path = filedialog.askopenfilename(filetypes=[("All Supported Types", ".csv .xlsx .las"),
@@ -310,11 +416,85 @@ class CrossWellPredictor(tk.Tk):
         else:
             messagebox.showwarning("Warning", "No log selected for Y dataset.")
 
-    def build_model(self, input_shape, lstm_units=200, learning_rate=0.01):
+    def calculate_correlations(self):
+        """
+        Calculate Pearson correlation coefficients between common X logs and the selected target log.
+        """
+        if not self.selected_y_log:
+            messagebox.showwarning("Warning", "No target log selected for correlation analysis.")
+            return
+
+        correlations = {}  # Dictionary to store correlation coefficients
+
+        for log in self.selected_x_logs:
+            if log != self.selected_y_log:
+                # Initialize lists to store data for correlation analysis
+                common_logs_data = []
+                y_data = []
+
+                # Extract the log data for correlation analysis
+                for well_name, df in self.training_wells.items():
+                    if log in df.columns and self.selected_y_log in df.columns:
+                        # Extract the data for the common log and target log
+                        x_log_data = df[log].values
+                        y_log_data = df[self.selected_y_log].values
+
+                        # Define unwanted values
+                        unwanted_values = {-999.25, -999.17, 999.25, 999.17}
+
+                        # Exclude rows with NaN, inf or unwanted values
+                        valid_indices = (np.isfinite(x_log_data) & np.isfinite(y_log_data) &
+                                         ~np.isin(x_log_data, unwanted_values) &
+                                         ~np.isin(y_log_data, unwanted_values))
+                        if np.any(valid_indices):
+                            common_logs_data.append(x_log_data[valid_indices])
+                            y_data.append(y_log_data[valid_indices])
+
+                # Calculate the Pearson correlation coefficient if there is valid data
+                if common_logs_data:
+                    common_logs_data = np.concatenate(common_logs_data)
+                    y_data = np.concatenate(y_data)
+                    print(f"Size of dataset for {log}: {len(common_logs_data)}")
+                    print(f"Size of y_data for {log}: {len(common_logs_data)}")
+
+                    correlation_coefficient = pearsonr(common_logs_data, y_data)[0]
+                    correlations[log] = correlation_coefficient
+
+        # Sort the logs by correlation coefficient in descending order
+        sorted_correlations = {k: v for k, v in
+                               sorted(correlations.items(), key=lambda item: abs(item[1]), reverse=True)}
+
+        # Display or store the sorted correlations
+        print("Correlation coefficients with the target log:")
+        for log, correlation in sorted_correlations.items():
+            print(f"{log}: {correlation:.2f}")
+
+    def build_model(self, input_shape, lstm_units=200, learning_rate=0.01, dropout_rate=0.2):
         model = Sequential()
-        model.add(LSTM(lstm_units, input_shape=input_shape, return_sequences=True, activation='relu'))
-        model.add(SeqSelfAttention(attention_activation='sigmoid'))
-        model.add(LSTM(lstm_units, activation='relu'))
+        print(self.method)
+
+        if self.method == "CNN-LSTM":
+            # Add 1D Convolutional layers
+            model.add(Conv1D(64, kernel_size=1, activation='relu', input_shape=input_shape))
+            model.add(MaxPooling1D(pool_size=1))
+            # model.add(Conv1D(128, kernel_size=3, activation='relu'))
+            # model.add(MaxPooling1D(pool_size=2))
+
+            # First LSTM layer with Bidirectional wrapper and tanh activation
+            model.add(Bidirectional(LSTM(lstm_units, return_sequences=True, activation='tanh')))
+            model.add(Dropout(dropout_rate))  # Add dropout layer
+
+            model.add(SeqSelfAttention())
+
+            # Second LSTM layer with Bidirectional wrapper and tanh activation
+            model.add(Bidirectional(LSTM(lstm_units, activation='tanh')))
+
+        elif self.method == "LSTM":
+            model.add(LSTM(lstm_units, input_shape=input_shape, return_sequences=True, activation='tanh'))
+            model.add(Dropout(dropout_rate))  # Add dropout layer
+            model.add(SeqSelfAttention())
+            model.add(LSTM(lstm_units, activation='tanh'))
+
         model.add(Dense(1, activation='linear'))  # Use linear activation for the output layer
 
         model.compile(optimizer=Adam(learning_rate=learning_rate), loss='mean_squared_error')
@@ -324,35 +504,70 @@ class CrossWellPredictor(tk.Tk):
         self.progress_text.delete(1.0, tk.END)
         self.progress_text.insert(tk.END, "Training model...\n")
 
-        X_train, Y_train = self.prepare_data()
+        X_train, Y_train, X_test, Y_test = self.prepare_data()
         input_shape = (X_train.shape[1], X_train.shape[2])
-        output_shape = Y_train.shape[1]
+        print(input_shape)
+        # Define early stopping
+        early_stopping = EarlyStopping(monitor='val_loss', patience=50, restore_best_weights=True)
+        filepath = "../output/CrossWellPrediction/weights-{epoch:03d}-{val_loss:.4f}.hdf5"
+
+        # Define model checkpoint to save the best model during training
+        model_checkpoint = ModelCheckpoint(filepath, monitor='val_loss', save_best_only=True)
 
         self.model = self.build_model(input_shape)
 
         # Create an instance of the custom callback
         loss_history_callback = LossHistory()
 
-        # Train the model and provide the custom callback
-        self.model.fit(X_train, Y_train, epochs=500, batch_size=64,
-                       callbacks=[LambdaCallback(on_epoch_end=self.on_epoch_end),
-                                  loss_history_callback])  # Use the custom callback here
+        # Train the model with early stopping and model checkpoint
+        history = self.model.fit(
+            X_train, Y_train,
+            epochs=500,
+            batch_size=64,
+            validation_data=(X_test, Y_test),  # Validation set
+            callbacks=[LambdaCallback(on_epoch_end=self.on_epoch_end),
+                       loss_history_callback,
+                       early_stopping,
+                       model_checkpoint]
+        )
 
         self.progress_text.insert(tk.END, "Training complete!\n")
 
         # Generate and display the loss vs. epochs plot using the collected loss values
-        self.plot_loss(loss_history_callback.losses)
+        self.plot_loss(history.history['loss'], history.history['val_loss'])
 
-    def plot_loss(self, loss_history):
-        loss_fig = plt.figure(figsize=(3, 2))
-        plt.plot(loss_history)
+        # Save the loss values to a CSV file
+        loss_df = pd.DataFrame({
+            'epoch': range(1, len(history.history['loss']) + 1),
+            'train_loss': history.history['loss'],
+            'val_loss': history.history['val_loss']
+        })
+
+        current_time = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f'loss_values_{current_time}.csv'
+        file_path = os.path.join('../output/CrossWellPrediction/', filename)
+
+        loss_df.to_csv(file_path, index=False)
+
+    def plot_loss(self, training_loss, validation_loss):
+        loss_fig = plt.figure(figsize=(6, 4))  # Adjust the figsize as needed
+        plt.plot(training_loss, label='Training Loss')
+        plt.plot(validation_loss, label='Validation Loss')
         plt.title("Loss vs. Epochs")
         plt.xlabel("Epochs")
         plt.ylabel("Loss")
+        plt.legend()
 
-        canvas = FigureCanvasTkAgg(loss_fig, master=self)  # A tk.DrawingArea.
+        # Use sticky to make the figure expand to fill the available space
+        canvas = FigureCanvasTkAgg(loss_fig, master=self)
+        canvas.get_tk_widget().grid(row=5, column=2, columnspan=2, rowspan=1, pady=10, padx=10, sticky='nsew')
+
+        # Configure row and column weights for proper resizing
+        self.grid_rowconfigure(5, weight=1)
+        self.grid_columnconfigure(2, weight=1)
+        self.grid_columnconfigure(3, weight=1)
+
         canvas.draw()
-        canvas.get_tk_widget().grid(row=5, column=2, columnspan=2, pady=10, padx=10)
 
     def on_epoch_end(self, epoch, logs):
         msg = f"Epoch {epoch + 1}, Loss: {logs['loss']}\n"
@@ -361,9 +576,12 @@ class CrossWellPredictor(tk.Tk):
         self.update()
 
     def predict_for_each_well_display(self):
-        predictions = self.predict_for_each_well()
-        for well, prediction in predictions.items():
-            self.progress_text.insert(tk.END, f"Predictions for {well}:\n")
+        if self.calculate_uncertainty.get():
+            print("Calculating uncertainty after prediction.")
+        predictions, lower_bounds, upper_bounds = self.predict_for_each_well()
+        for well_name in predictions.keys():
+            prediction = predictions[well_name]
+            self.progress_text.insert(tk.END, f"Predictions for {well_name}:\n Completed!")
             self.progress_text.insert(tk.END, f"{prediction}\n")
             self.progress_text.see(tk.END)
 
@@ -375,12 +593,42 @@ class CrossWellPredictor(tk.Tk):
 
         # Apply inverse log transformation to specified logs
         if self.selected_y_log in self.logs_to_log_transform:
-            y_pred_denorm = np.exp(y_pred_denorm)
+            y_pred_denorm = np.clip(y_pred_denorm, -5, 4)  # Adjust the range as needed
+            y_pred_denorm = np.power(10, y_pred_denorm)
 
         return y_pred_denorm
 
+    def apply_imputation_conditions(self, df, original_indices):
+        for i, index in enumerate(original_indices):
+            if 'NPHI_N' in df.columns and 'DPHI_N' in df.columns:
+                # Check if POR_N exists and if it's equal to 0
+                if ('POR_N' in df.columns and df.loc[index, 'POR_N'] == 0) or \
+                        ('POR_N' not in df.columns and 'POR_D' in df.columns and df.loc[index, 'POR_D'] == 0):
+                    df.loc[index, self.selected_y_log + '_PRE'] = np.nan
+                elif (df.loc[index, 'NPHI_N'] < 0 or df.loc[index, 'DPHI_N'] < 0 or
+                      (df.loc[index, 'DPHI_N'] - df.loc[index, 'NPHI_N']) > 0.14):
+                    df.loc[index, self.selected_y_log + '_PRE'] = np.nan
+            elif 'NPHI_D' in df.columns and 'DPHI_D' in df.columns:
+                # Check if POR_D exists and if it's equal to 0
+                if ('POR_D' in df.columns and df.loc[index, 'POR_D'] == 0) or \
+                        ('POR_D' not in df.columns and 'POR_N' in df.columns and df.loc[index, 'POR_N'] == 0):
+                    df.loc[index, self.selected_y_log + '_PRE'] = np.nan
+                elif (df.loc[index, 'NPHI_D'] < 0 or df.loc[index, 'DPHI_D'] < 0 or
+                      (df.loc[index, 'DPHI_D'] - df.loc[index, 'NPHI_D']) > 0.14):
+                    df.loc[index, self.selected_y_log + '_PRE'] = np.nan
+        pass
+
     def predict_for_each_well(self):
         predictions = {}
+        well_names = []
+        lower_bounds = {}
+        upper_bounds = {}
+
+        # Define the output directory path
+        output_directory = "../output/CrossWellPrediction"
+
+        # Create the output directory if it doesn't exist
+        os.makedirs(output_directory, exist_ok=True)
 
         for well_name, df in self.prediction_wells.items():
             # Handle missing data
@@ -395,65 +643,199 @@ class CrossWellPredictor(tk.Tk):
                                                                            self.scaler)
 
             X_pred = df_imputed[self.selected_x_logs].values
-            X_pred_reshaped = X_pred.reshape(X_pred.shape[0], 1, X_pred.shape[1])
 
+            # Zero padding and reshaping the prediction matrix
+            X_pred_reshaped = segment_data(X_pred, self.window_size)
+            X_pred_reshaped = zero_pad(X_pred_reshaped, len(X_pred))
+
+            # Main prediction without uncertainty
             y_pred = self.model.predict(X_pred_reshaped)
-
-            # Denormalize the prediction
             y_pred_denorm = self.denormalize_prediction(y_pred, self.scaler)
+            y_pred_denorm = process_y_pred_denorm(y_pred_denorm)
 
-            # Convert y_pred_denorm to a DataFrame for easy indexing
+            if self.calculate_uncertainty.get():
+                # Perform bootstrapping
+                n_bootstraps = 1000  # adjust the number of bootstraps as needed
+                bootstrap_predictions = []
+
+                for _ in range(n_bootstraps):
+                    # Sample with replacement
+                    indices = np.random.choice(X_pred_reshaped.shape[0], X_pred_reshaped.shape[0], replace=True)
+                    X_bootstrap = X_pred_reshaped[indices]
+
+                    # Make predictions on the bootstrap sample
+                    y_bootstrap_pred = self.model.predict(X_bootstrap)
+
+                    # Denormalize the prediction for the bootstrap sample
+                    y_bootstrap_pred_denorm = self.denormalize_prediction(y_bootstrap_pred, self.scaler)
+
+                    # Process the denormalized prediction
+                    y_bootstrap_pred_denorm = process_y_pred_denorm(y_bootstrap_pred_denorm)
+
+                    bootstrap_predictions.append(y_bootstrap_pred_denorm)
+
+                # Compute confidence intervals from the bootstrapped predictions
+                lower_bound = np.percentile(bootstrap_predictions, 10, axis=0)
+                upper_bound = np.percentile(bootstrap_predictions, 90, axis=0)
+
+                # Convert lower_bound_denorm and upper_bound_denorm to DataFrames
+                lower_bound_df = pd.DataFrame(lower_bound, columns=[self.selected_y_log + '_LOWER_BOUND'])
+                upper_bound_df = pd.DataFrame(upper_bound, columns=[self.selected_y_log + '_UPPER_BOUND'])
+
+                for i, index in enumerate(original_indices):
+                    df.loc[index, self.selected_y_log + '_LOWER_BOUND'] = lower_bound_df.loc[
+                        i, self.selected_y_log + '_LOWER_BOUND']
+                    df.loc[index, self.selected_y_log + '_UPPER_BOUND'] = upper_bound_df.loc[
+                        i, self.selected_y_log + '_UPPER_BOUND']
+
+            # Convert y_pred_denorm to DataFrame
             y_pred_df = pd.DataFrame(y_pred_denorm, columns=[self.selected_y_log + '_PRE'])
 
             # Insert the predicted values back into the original DataFrame using indices
             for i, index in enumerate(original_indices):
                 df.loc[index, self.selected_y_log + '_PRE'] = y_pred_df.loc[i, self.selected_y_log + '_PRE']
 
-            # Write to file (if desired)
-            df.to_csv(well_name + '.csv', index=False)
+            # Apply imputation based on conditions
+            self.apply_imputation_conditions(df, original_indices)
 
+            # Extract the well name without the file extension
+            file_name = os.path.splitext(well_name)[0]
+
+            # Define the file path for saving the prediction
+            output_file_path = os.path.join(output_directory, file_name + '_Predicted.csv')
+
+            # Write the DataFrame to the specified file path
+            df.to_csv(output_file_path, index=False)
+
+            print("Prediction output to:", output_file_path)
+
+            # Append the results to dictionaries
             predictions[well_name] = y_pred_denorm
+            if self.calculate_uncertainty.get():
+                lower_bounds[well_name] = lower_bound
+                upper_bounds[well_name] = upper_bound
+                self.visualize_uncertainty(predictions[well_name], lower_bounds[well_name], upper_bounds[well_name],
+                                           well_name)
 
-        return predictions
+        return predictions, lower_bounds, upper_bounds if self.calculate_uncertainty.get() else predictions
+
+    def visualize_uncertainty(self, y_pred, lower_bound, upper_bound, well_name):
+        plt.figure(figsize=(10, 6))
+        plt.plot(y_pred, label='Predicted', color='blue')
+        plt.fill_between(np.arange(len(y_pred)), lower_bound, upper_bound, color='gray', alpha=0.5, label='CI')
+        plt.title(f'Uncertainty Analysis for {well_name}')
+        plt.xlabel('Sample Index')
+        plt.ylabel('Predicted Value')
+        plt.yscale('log')
+        plt.legend()
+        plt.show()
 
     def train_with_hyperparameters(self):
-        X_train, Y_train = self.prepare_data()
-        # Example: We'll just tune the number of LSTM units and the learning rate
+        X_train, Y_train, X_test, Y_test = self.prepare_data()
+
+        # Define hyperparameter search space
+        lstm_units_options = [50, 100, 200]
+        learning_rates = [0.01, 0.001, 0.0001]
+        dropout_rates = [0.0, 0.2, 0.4]
+
         best_score = float('inf')  # Assume we are minimizing loss
         best_params = None
 
-        lstm_units_options = [50, 200]
-        learning_rates = [0.01, 0.0001]
-
         for units in lstm_units_options:
             for lr in learning_rates:
-                model = self.build_model((X_train.shape[1], X_train.shape[2]), lstm_units=units, learning_rate=lr)
-                history = model.fit(X_train, Y_train, epochs=500, batch_size=64, verbose=0)
+                for dropout_rate in dropout_rates:
+                    model = self.build_model(
+                        input_shape=(X_train.shape[1], X_train.shape[2]),
+                        lstm_units=units,
+                        learning_rate=lr,
+                        dropout_rate=dropout_rate
+                    )
+                    history = model.fit(
+                        X_train, Y_train,
+                        epochs=500,
+                        batch_size=64,
+                        validation_data=(X_test, Y_test),  # Validation set
+                        verbose=0
+                    )
 
-                # Check final loss for the model
-                final_loss = history.history['loss'][-1]
+                    # Check final validation loss for the model
+                    final_loss = history.history['val_loss'][-1]
 
-                if final_loss < best_score:
-                    best_score = final_loss
-                    best_params = (units, lr)
+                    if final_loss < best_score:
+                        best_score = final_loss
+                        best_params = (units, lr, dropout_rate)
 
+        # Display the best hyperparameters
         messagebox.showinfo("Hyperparameter Tuning",
-                            f"Best Loss: {best_score}\nBest LSTM Units: {best_params[0]}\nBest Learning Rate: {best_params[1]}")
+                            f"Best Validation Loss: {best_score:.4f}\n"
+                            f"Best LSTM Units: {best_params[0]}\n"
+                            f"Best Learning Rate: {best_params[1]}\n"
+                            f"Best Dropout Rate: {best_params[2]}")
+
+    def apply_hyperparameters(self):
+        """
+        Apply the specified hyperparameters to build the model and predict using the target log.
+        """
+        lstm_units, learning_rate, dropout_rate = self.retrieve_hyperparameters()
+
+        # Prepare data
+        X_train, Y_train, X_test, Y_test = self.prepare_data()
+        input_shape = (X_train.shape[1], X_train.shape[2])
+
+        # Build the model using the specified hyperparameters
+        model = self.build_model(input_shape, lstm_units=lstm_units, learning_rate=learning_rate,
+                                 dropout_rate=dropout_rate)
+
+        # Train the model
+        model.fit(X_train, Y_train, epochs=500, batch_size=64, verbose=0)
+
+        # Perform prediction using the trained model
+        predictions, lower_bounds, upper_bounds = self.predict_for_each_well()
+
+        for well_name in predictions.keys():
+            prediction = predictions[well_name]
+            self.progress_text.insert(tk.END, f"Predictions for {well_name}:\n Completed!")
+            self.progress_text.insert(tk.END, f"{prediction}\n")
+            self.progress_text.see(tk.END)
 
     def save_model(self):
         if hasattr(self, 'model'):
-            file_path = filedialog.asksaveasfilename(defaultextension=".h5", filetypes=[("H5 files", "*.h5")])
+            file_path = filedialog.asksaveasfilename(defaultextension=".keras", filetypes=[("Keras files", "*.keras")])
             if file_path:
+                # Ensure the file path has the .keras extension
+                if not file_path.endswith(".keras"):
+                    file_path += ".keras"
+
+                # Save the model using the native Keras format
                 self.model.save(file_path)
-                messagebox.showinfo("Success", "Model saved successfully!")
+
+                # Save the scaler as a separate file with "_scaler.pkl" extension
+                scaler_path = file_path.replace(".keras", "_scaler.pkl")
+                joblib.dump(self.scaler, scaler_path)
+
+                messagebox.showinfo("Success", "Model and scaler saved successfully!")
         else:
             messagebox.showerror("Error", "No trained model found!")
 
     def load_model(self):
-        file_path = filedialog.askopenfilename(filetypes=[("H5 files", "*.h5")])
+        # Load the model
+        file_path = filedialog.askopenfilename(filetypes=[("keras files", "*.keras")])
         if file_path:
             self.model = load_model(file_path)
             messagebox.showinfo("Success", "Model loaded successfully!")
+
+            # Load the scaler using joblib
+            scaler_path = file_path.replace(".keras",
+                                            "_scaler.pkl")
+            try:
+                self.scaler = joblib.load(scaler_path)
+            except FileNotFoundError:
+                messagebox.showerror("Error", "Scaler file not found. Please make sure the scaler file is available.")
+
+            if hasattr(self, 'model') and hasattr(self, 'scaler'):
+                messagebox.showinfo("Success", "Model and scaler loaded successfully!")
+            else:
+                messagebox.showerror("Error", "Model or scaler loading failed.")
 
 
 # To run the GUI

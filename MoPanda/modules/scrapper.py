@@ -6,21 +6,20 @@ function downloads the specific dataset to parse and unzip.
 
 """
 
-
-import os
-import sys
-import time
 import fnmatch
+import os
+import time
 from ftplib import FTP
-from zipfile import ZipFile
 from io import BytesIO
-import pandas as pd
 from urllib.request import urlopen
+from zipfile import ZipFile
+
+import pandas as pd
 
 from las_io import LasIO
 
 
-def ul_lands_download(save_dir = None):
+def ul_lands_download(save_dir=None):
     """
     Downloads las files from University Lands Texas
 
@@ -122,7 +121,7 @@ def ul_lands_download(save_dir = None):
     return df
 
 
-def kgs_download(save_dir = None):
+def kgs_download(save_dir=None):
     """
     Downloads las files from Kansas Geologic Society
 
@@ -193,7 +192,7 @@ def kgs_download(save_dir = None):
     return df
 
 
-def create_log_inventory_table(save_dir, folder_copy = None):
+def create_log_inventory_table(save_dir, folder_copy=None):
     """
     Scans all folders and subfolders (recursive scan) for las files,
     and opens them as a :class:`petropy.Log` object. Extracts header
@@ -244,7 +243,7 @@ def create_log_inventory_table(save_dir, folder_copy = None):
                                 break
 
                     if new_name == '':
-                        new_name = os.path.basename(path)
+                        new_name = os.path.basename(las_path)
 
                     new_name = os.path.join(folder_copy, new_name)
                     log.write(new_name)
@@ -267,6 +266,6 @@ def create_log_inventory_table(save_dir, folder_copy = None):
 
     df = pd.DataFrame(log_data)
     log_inventory_path = os.path.join(save_dir, 'log_inventory.csv')
-    df.to_csv(log_inventory_path, index = False)
+    df.to_csv(log_inventory_path, index=False)
 
     return df

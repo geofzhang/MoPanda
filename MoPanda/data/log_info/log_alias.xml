@@ -3,7 +3,7 @@
 
     <CAL_N>
         <CAL_N/>
-	<CAL_D/>
+        <CAL_D/>
         <CAL/>
         <CALI/>
         <C1/>
@@ -155,9 +155,9 @@
         <G/>
         <GAB/>
         <GAM/>
-	<GAMM/>
+        <GAMM/>
         <GAM1/>
-	<GAMNAT/>
+        <GAMNAT/>
         <GAPI/>
         <GR/>
         <GR/>
@@ -205,8 +205,8 @@
 
     <RESSHAL_N>
         <RESSHAL_N/>
-	<RESS_D/>
-	<RESS/>
+        <RESS_D/>
+        <RESS/>
         <AHTRX/>
         <ATRX/>
         <HRL1/>
@@ -238,7 +238,7 @@
         <HRLS/>
         <HSFLU/>
         <ILS/>
-	<LL3/>
+        <LL3/>
         <LL8/>
         <LLA/>
         <M0R1/>
@@ -250,8 +250,8 @@
         <MSFL/>
         <PSHG/>
         <RES/>
-	<RES16N/>
-	<AM16/>
+        <RES16N/>
+        <AM16/>
         <RILS/>
         <RLL2/>
         <RS/>
@@ -265,7 +265,7 @@
         <SFLR/>
         <SFLU/>
         <SN/>
-	<RSN/>
+        <RSN/>
         <AHT2/>
         <AS20/>
         <ASRX/>
@@ -309,7 +309,7 @@
 
     <RESMED_N>
         <RESMED_N/>
-	<RESM_D/>
+        <RESM_D/>
         <AHT30/>
         <AIT30/>
         <AST30/>
@@ -367,7 +367,7 @@
 
     <RESDEEP_N>
         <RESDEEP_N/>
-	<RESD_D/>
+        <RESD_D/>
         <ATRT/>
         <AIT120/>
         <AIT90/>
@@ -456,7 +456,7 @@
         <GRD/>
         <HRL4/>
         <LN/>
-	<RLN/>
+        <RLN/>
         <M0R6/>
         <M1R6/>
         <M2R6/>
@@ -504,8 +504,8 @@
         <P34H/>
         <P34H_/>
         <P34H_UNC/>
-	<REST/>
-	<RES64N/>
+        <REST/>
+        <RES64N/>
         <RLL/>
     </RESDEEP_N>
 
@@ -553,7 +553,7 @@
         <HTNP/>
         <NCN/>
         <NCNL/>
-	<NEUT/>
+        <NEUT/>
     </NPHI_N>
 
     <DPHI_N>
@@ -747,7 +747,7 @@
 
     <SP_N>
         <SP_N/>
-	<ESP/>
+        <ESP/>
         <HSP/>
         <SP/>
         <SPAR/>
@@ -778,7 +778,7 @@
 
     <RWA_N>
         <RWA_N/>
-	<RWA_HILT/>
+        <RWA_HILT/>
         <RWA_D/>
         <RWA/>
     </RWA_N>
@@ -799,8 +799,8 @@
 
     <UMAA_N>
         <UMAA_N/>
-	<UGE/>
-	<UGE_INCP/>
+        <UGE/>
+        <UGE_INCP/>
         <REGE/>
         <REGE_INCP/>
         <UMAA/>
@@ -808,22 +808,22 @@
     </UMAA_N>
 
     <TEMP_N>
-	<TEMP_N/>
-	<TEMP_D/>
-	<TEMP/>
+        <TEMP_N/>
+        <TEMP_D/>
+        <TEMP/>
     </TEMP_N>
 
     <PRESSURE_N>
-	<PRESSURE_N/>
-	<PRESSURE_D/>
-	<BHPR/>
-	<BHPR_ADT/>
+        <PRESSURE_N/>
+        <PRESSURE_D/>
+        <BHPR/>
+        <BHPR_ADT/>
     </PRESSURE_N>
 
     <POR_N>
-	<POR_N/>
-	<POR_D/>
-	<POR/>
+        <POR_N/>
+        <POR_D/>
+        <POR/>
     </POR_N>
 
 </CURVES>

@@ -1,18 +1,24 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <graph>
-  <track display_name="DEPTH" number_spacing="50" tick_spacing="10" line_spacing="100" width="0.75">
-  </track>
-  <track display_name="POROSITY" width="1" major_lines="9">
-    <curve display_name="POR" curve_name="POR_N" color="#0099CC" left="0.45" right="-0.15" left_cutoff_fill="0.15" left_cutoff_fill_color="#cde7f0"/>
-  </track>
-  <track display_name="SALINITY" width="1" major_lines="9">
-    <curve display_name="SALINITY" curve_name="SALINITY_N" color="#330000" left="0" right="50000" left_cutoff_fill="10000" left_cutoff_fill_color="#cde7f0" right_cutoff_fill="10000" right_cutoff_fill_color="#ff9994"/>
-  </track>
-  <track display_name="POROSITY" width="1" major_lines="9">
-    <curve display_name="POR" curve_name="POR_N_MASKED" color="#0099CC" left="0.45" right="-0.15" left_cutoff_fill="0.15" left_cutoff_fill_color="#cde7f0"/>
-  </track>
-  <track display_name="SALINITY" width="1" major_lines="9">
-    <curve display_name="SALINITY" curve_name="SALINITY_N_MASKED" color="#330000" left="0" right="50000" left_cutoff_fill="10000" left_cutoff_fill_color="#cde7f0" right_cutoff_fill="10000" right_cutoff_fill_color="#ff9994"/>
-  </track>
+    <track display_name="DEPTH" number_spacing="50" tick_spacing="10" line_spacing="100" width="0.75">
+    </track>
+    <track display_name="POROSITY" width="1" major_lines="9">
+        <curve display_name="POR" curve_name="POR_N" color="#0099CC" left="0.45" right="-0.15" left_cutoff_fill="0.15"
+               left_cutoff_fill_color="#cde7f0"/>
+    </track>
+    <track display_name="SALINITY" width="1" major_lines="9">
+        <curve display_name="SALINITY" curve_name="SALINITY_N" color="#330000" left="0" right="50000"
+               left_cutoff_fill="10000" left_cutoff_fill_color="#cde7f0" right_cutoff_fill="10000"
+               right_cutoff_fill_color="#ff9994"/>
+    </track>
+    <track display_name="POROSITY" width="1" major_lines="9">
+        <curve display_name="POR" curve_name="POR_N_MASKED" color="#0099CC" left="0.45" right="-0.15"
+               left_cutoff_fill="0.15" left_cutoff_fill_color="#cde7f0"/>
+    </track>
+    <track display_name="SALINITY" width="1" major_lines="9">
+        <curve display_name="SALINITY" curve_name="SALINITY_N_MASKED" color="#330000" left="0" right="50000"
+               left_cutoff_fill="10000" left_cutoff_fill_color="#cde7f0" right_cutoff_fill="10000"
+               right_cutoff_fill_color="#ff9994"/>
+    </track>
 
 </graph>

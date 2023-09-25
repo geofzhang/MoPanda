@@ -1,9 +1,10 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 from dlisio import dlis
+
 
 def dlis_viewer():
     def load_dlis_file():
@@ -16,7 +17,6 @@ def dlis_viewer():
                 show_channels_data(f, channels)
             except Exception as e:
                 show_error_message(str(e))
-
 
     def summary_dataframe(object, **kwargs):
         df = pd.DataFrame()
@@ -31,7 +31,6 @@ def dlis_viewer():
                     continue
             df[value] = list_of_values
         return df
-
 
     def show_channels_data(f, channels):
         channels_window = tk.Toplevel(root)
@@ -272,10 +271,8 @@ def dlis_viewer():
 
         channels_window.protocol("WM_DELETE_WINDOW", close_window)
 
-
     def show_error_message(message):
         messagebox.showerror('Error', message)
-
 
     root = tk.Tk()
     root.title("DLIS Viewer")

@@ -1,9 +1,10 @@
-import pandas as pd
-import xml.etree.ElementTree as ET
 import os
 import shutil
 import tkinter as tk
+import xml.etree.ElementTree as ET
 from tkinter import filedialog
+
+import pandas as pd
 
 
 def check_file(output_file):

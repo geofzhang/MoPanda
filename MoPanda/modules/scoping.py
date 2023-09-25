@@ -1,12 +1,13 @@
 import os
 import tkinter as tk
 from tkinter import filedialog, messagebox
-from matplotlib import pyplot as plt
+
 import numpy as np
-from EDA.MoPanda.MoPanda.modules.las_io import LasIO
-from EDA.MoPanda.MoPanda.modules.graphs import LogViewer
-from EDA.MoPanda.MoPanda.modules.electrofacies import electrofacies
-from EDA.MoPanda.MoPanda.modules.utils import ColorCoding as cc
+from matplotlib import pyplot as plt
+
+from modules.graphs import LogViewer
+from modules.las_io import LasIO
+
 
 def scoping(input_folder_var, masking_var, gr_filter_var):
     # Default values for the variables
@@ -92,7 +93,7 @@ def scoping(input_folder_var, masking_var, gr_filter_var):
         if gr_filter:
             depth_index = df.loc[
                 (df['SALINITY_N'] > salinity_limit) & (df['POR_N'] > phi_limit) & (
-                            df['SGR_N'] < gr_limit), 'DEPTH_INDEX']
+                        df['SGR_N'] < gr_limit), 'DEPTH_INDEX']
             for curve in target_logs.append('SGR_N'):
                 data[depth_index] = df.loc[(df['SALINITY_N'] > salinity_limit) & (df['POR_N'] > phi_limit), curve]
                 log.append_curve(

@@ -1,10 +1,11 @@
-import tkinter as tk
-from tkinter import ttk
-from tkinter import filedialog, messagebox
-from EDA.MoPanda.MoPanda.modules.las_io import LasIO
 import os
 import shutil
+import tkinter as tk
 import xml.etree.ElementTree as ET
+from tkinter import filedialog, messagebox
+from tkinter import ttk
+
+from EDA.MoPanda.MoPanda.modules.las_io import LasIO
 
 
 def get_root_names():

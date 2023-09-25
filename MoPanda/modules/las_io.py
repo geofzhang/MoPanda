@@ -1,14 +1,15 @@
-import math
 import os
-import re
+import os
 import xml.etree.ElementTree as ET
-import pandas as pd
+from tkinter import messagebox
+
 import numpy as np
-import datetime as dt
+import pandas as pd
+from lasio import LASFile
 from scipy.optimize import nnls
-from lasio import LASFile, CurveItem
-from EDA.MoPanda.MoPanda.modules.utils import check_file
-from tkinter import filedialog, messagebox
+
+from modules.utils import check_file
+
 
 # Major Log subclass that inherits the LASFile superclass and perform expansive mathematical petrophysics analysis and
 # data analysis.LOG
@@ -1441,7 +1442,7 @@ class LasIO(LASFile):
             print('Export aborted')
 
     def write(self, filepath, version=2.0, wrap=False,
-              STRT=None, STOP=None, STEP=None, fmt='%10.5g', mnemonics_header=True,  data_section_header="~A"):
+              STRT=None, STOP=None, STEP=None, fmt='%10.5g', mnemonics_header=True, data_section_header="~A"):
         """
         Writes to las file, and overwrites if file exists. Uses parent
         class LASFile.write method with specified defaults.
@@ -1452,4 +1453,4 @@ class LasIO(LASFile):
         with open(filepath, 'w') as f:
             super(LasIO, self).write(f, version=version, wrap=wrap,
                                      STRT=STRT, STOP=STOP,
-                                     STEP=None, fmt=fmt, mnemonics_header=True,  data_section_header="~A")
+                                     STEP=None, fmt=fmt, mnemonics_header=True, data_section_header="~A")

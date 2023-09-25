@@ -1,10 +1,12 @@
 import os
 import tkinter as tk
 from tkinter import filedialog, messagebox
-from matplotlib import pyplot as plt
+
 import numpy as np
-from EDA.MoPanda.MoPanda.modules.las_io import LasIO
+from matplotlib import pyplot as plt
+
 from EDA.MoPanda.MoPanda.modules.graphs import LogViewer
+from EDA.MoPanda.MoPanda.modules.las_io import LasIO
 
 # Default values for the variables
 start_depth = 3000
@@ -19,8 +21,10 @@ masking = {
     'curves_to_mask': [],
 }
 
+
 class MissingLogException(Exception):
     pass
+
 
 def scoping_viewer():
     file_path = filedialog.askopenfilename(filetypes=[("LAS Files", "*.las")])
@@ -30,6 +34,7 @@ def scoping_viewer():
         # Display the log using the Scoping template defaults
         viewer = LogViewer(log, template_defaults='scoping', top=start_depth, height=1000, masking=masking)
         viewer.show()
+
 
 def simple_scoping_viewer():
     file_path = filedialog.askopenfilename(filetypes=[("LAS Files", "*.las")])
@@ -62,6 +67,7 @@ def simple_scoping_viewer():
 
         viewer.show()
 
+
 def scoping(log, start_depth, end_depth, gr_filter):
     # Auto turning off GR filter
     if 'SGR_N' not in log.curves:
@@ -89,7 +95,7 @@ def scoping(log, start_depth, end_depth, gr_filter):
     if gr_filter:
         depth_index = df.loc[
             (df['SALINITY_N'] > salinity_limit) & (df['POR_N'] > phi_limit) & (
-                        df['SGR_N'] < gr_limit), 'DEPTH_INDEX']
+                    df['SGR_N'] < gr_limit), 'DEPTH_INDEX']
         for curve in target_logs.append('SGR_N'):
             data[depth_index] = df.loc[(df['SALINITY_N'] > salinity_limit) & (df['POR_N'] > phi_limit), curve]
             log.append_curve(
@@ -109,6 +115,7 @@ def scoping(log, start_depth, end_depth, gr_filter):
             )
 
     return log
+
 
 def process_las_files():
     global masking, gr_filter  # Declare the variables as global within the function
@@ -152,6 +159,7 @@ def process_las_files():
                     log.write(destination_file, mnemonics_header=True, data_section_header="~A")
 
     messagebox.showinfo("Process Complete", "LAS files processing is complete!")
+
 
 # Create the GUI
 root = tk.Tk()

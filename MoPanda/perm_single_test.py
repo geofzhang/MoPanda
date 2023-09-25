@@ -1,8 +1,9 @@
-import pandas as pd
-from EDA.MoPanda.MoPanda.modules.cmr_permeability import GaussianDecomposition
-
-from EDA.MoPanda.MoPanda.modules.las_io import LasIO
 import os
+
+import pandas as pd
+
+from modules.cmr_permeability import GaussianDecomposition
+from modules.las_io import LasIO
 
 las_file_path: str = './data/las/Denova1_modified.las'
 tops_file_path = './data/log_info/tops.csv'
@@ -41,9 +42,8 @@ num_components = 7
 
 # Plot the Gaussian decomposition for a specific index
 gd = GaussianDecomposition(df)
-index = 1655
+index = 1709
 gd.decomposition_single(index=index, num_components=num_components, auto_search=False)
-
 
 # # find way to name well, looking for well name#
 # # or UWI or API #

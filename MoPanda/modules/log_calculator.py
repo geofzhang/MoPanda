@@ -1,15 +1,15 @@
-from EDA.MoPanda.MoPanda.modules.las_io import LasIO
-from EDA.MoPanda.MoPanda.modules.graphs import LogViewer
-from EDA.MoPanda.MoPanda.modules.electrofacies import electrofacies
-from EDA.MoPanda.MoPanda.modules.utils import ColorCoding as cc
 import os
-
-import pandas as pd
-from EDA.MoPanda.MoPanda.modules.cmr_permeability import GaussianDecomposition, perform_gaussian_decomposition
-import numpy as np
-from matplotlib import pyplot as plt
 import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog
+
+import pandas as pd
+from matplotlib import pyplot as plt
+
+from modules.cmr_permeability import GaussianDecomposition, perform_gaussian_decomposition
+from modules.electrofacies import electrofacies
+from modules.graphs import LogViewer
+from modules.las_io import LasIO
+from modules.utils import ColorCoding as cc
 
 
 # Import other required modules and classes
@@ -20,7 +20,7 @@ class LogCalculator(tk.Frame):
         self.grid(sticky=(tk.N, tk.W, tk.E, tk.S))  # Embed it into the provided frame
         self.create_widgets()
 
-        self.lithology_color_coding = './data/color_code/lithology_color_code.xml'
+        self.lithology_color_coding = '../data/color_code/lithology_color_code.xml'
 
         self.t2_browse_button = tk.Button(self, text="Browse", command=self.browse_t2, state=tk.DISABLED)
         self.t2_browse_button.grid(row=5, column=2)  # Add this line
@@ -231,7 +231,7 @@ class LogCalculator(tk.Frame):
 
         # add logo to top left corner #
 
-        logo_im = plt.imread('./logo/ca_logo.png')
+        logo_im = plt.imread('../logo/ca_logo.png')
         logo_ax = viewer.fig.add_axes([0, 0.85, 0.2, 0.2])
         logo_ax.imshow(logo_im)
         logo_ax.axis('off')
@@ -240,8 +240,8 @@ class LogCalculator(tk.Frame):
 
         # Export converted data (raw) to either .csv or .xlsx
         las_file_name = os.path.splitext(os.path.basename(las_file_path))[0]
-        excel_output = f'./output/{las_file_name}_{xml_template}.xlsx'
-        las_output = f'./output/{las_file_name}_{xml_template}.las'
+        excel_output = f'../output/{las_file_name}_{xml_template}.xlsx'
+        las_output = f'../output/{las_file_name}_{xml_template}.las'
 
         log.export_excel(excel_output)
         log.write(las_output)

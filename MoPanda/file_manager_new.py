@@ -1,46 +1,46 @@
+import os
 import tkinter as tk
 from tkinter import ttk
-from tkinter import filedialog, messagebox
-import os
-from EDA.MoPanda.MoPanda.modules import wellfilter
+
+from modules import wellfilter
 
 
 # Function to create a GUI with tabs
 def create_main_gui():
     def open_copy_tab():
-        from EDA.MoPanda.MoPanda.modules.utils import copyfiles
+        from modules.utils import copyfiles
         copyfiles()
 
     def open_scoping_tab():
-        from EDA.MoPanda.MoPanda.modules.scoping import scoping
+        from modules.scoping import scoping
         masking_var = tk.BooleanVar()
         gr_filter_var = tk.BooleanVar(value=False)
         input_folder_var = tk.StringVar(value=os.getcwd())  # StringVar to store the selected input folder path
         scoping(input_folder_var, masking_var, gr_filter_var)
 
     def open_dlis_viewer_tab():
-        from EDA.MoPanda.MoPanda.modules.dlis_io import dlis_viewer
+        from modules.dlis_io import dlis_viewer
         dlis_viewer()
 
     def open_las_viewer_tab():
         # Importing the WellLogGUI class here to avoid circular imports
-        from EDA.MoPanda.MoPanda.modules.las_viewer import WellLogGUI
+        from modules.las_viewer import WellLogGUI
         las_viewer = WellLogGUI(app)
 
     def open_curve_fitter():
-        from EDA.MoPanda.MoPanda.modules.curvefitter import CMRPermeabilityApp
+        from modules.curvefitter import CMRPermeabilityApp
         CMRPermeabilityApp()
 
     def open_log_calculator_tab():
-        from EDA.MoPanda.MoPanda.modules.log_calculator import LogCalculator
+        from modules.log_calculator import LogCalculator
         LogCalculator()
 
     def open_inwellpredictor():
-        from EDA.MoPanda.MoPanda.modules.data_analysis import InWellPredictor
+        from modules.inwellpredictor import InWellPredictor
         InWellPredictor()
 
     def open_crosswellpredictor():
-        from EDA.MoPanda.MoPanda.modules.crosswellpredictor import CrossWellPredictor
+        from modules.crosswellpredictor import CrossWellPredictor
         CrossWellPredictor()
 
     # Define custom font for labels
@@ -110,7 +110,7 @@ def create_main_gui():
     #  Permeability Model Fitting
     cmr_frame = ttk.Frame(da_tab)
     cmr_frame.pack(fill="both", padx=20, pady=20)
-    from EDA.MoPanda.MoPanda.modules.curvefitter import CMRPermeabilityApp
+    from modules.curvefitter import CMRPermeabilityApp
     CMRPermeabilityApp(cmr_frame)
     add_separator(da_tab)
 
@@ -135,7 +135,7 @@ def create_main_gui():
     log_calculator_frame = ttk.Frame(pp_tab)
     log_calculator_frame.pack(fill="both", padx=20, pady=20)
     # Embed LogCalculator into the Petrophysics tab
-    from EDA.MoPanda.MoPanda.modules.log_calculator import LogCalculator
+    from modules.log_calculator import LogCalculator
     LogCalculator(log_calculator_frame)
     add_separator(pp_tab)
 

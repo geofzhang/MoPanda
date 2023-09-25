@@ -1,8 +1,9 @@
-import pandas as pd
-import numpy as np
-from sklearn.mixture import GaussianMixture
 import os
+
+import numpy as np
+import pandas as pd
 from openpyxl import Workbook
+from sklearn.mixture import GaussianMixture
 
 # Load the T2 distribution dataset from the Excel spreadsheet
 input_file_path = '../data/cmr/Denova1_T2_DIST_3800FT.xlsx'
@@ -34,7 +35,6 @@ for i, gmm in enumerate(gmm_models):
     covariances[i, :] = gmm.covariances_.flatten()[0::4]
     print(gmm.weights_)
     weights[i, :] = gmm.weights_.flatten()
-
 
 # Create a new Excel workbook and write the results to separate sheets
 output_file_name = os.path.basename(input_file_path)

@@ -1,21 +1,22 @@
+import os
+
 import pandas as pd
-from EDA.MoPanda.MoPanda.modules.cmr_permeability import GaussianDecomposition, perform_gaussian_decomposition
 from matplotlib import pyplot as plt
 
-from EDA.MoPanda.MoPanda.modules.las_io import LasIO
-from EDA.MoPanda.MoPanda.modules.graphs import LogViewer
+from EDA.MoPanda.MoPanda.modules.cmr_permeability import GaussianDecomposition, perform_gaussian_decomposition
 from EDA.MoPanda.MoPanda.modules.electrofacies import electrofacies
+from EDA.MoPanda.MoPanda.modules.graphs import LogViewer
+from EDA.MoPanda.MoPanda.modules.las_io import LasIO
 from EDA.MoPanda.MoPanda.modules.utils import ColorCoding as cc
-import os
 
 # Parameter Input
 las_file_path = '../data/las/Denova1_modified.LAS'
 tops_file_path = '../data/log_info/tops.csv'
 t2_file_path = '../data/cmr/Denova1_T2_DIST_3800FT.xlsx'
 xml_template = 'permeability'
-lithology_color_coding = './data/color_code/lithology_color_code.xml'
-excel_output = './output/Denova1_perm.xlsx'
-las_output = './output/Denova1_perm.las'
+lithology_color_coding = '../data/color_code/lithology_color_code.xml'
+excel_output = '../output/Denova1_perm.xlsx'
+las_output = '../output/Denova1_perm.las'
 start_depth = 3800
 end_depth = 5000
 display_decomp = True
@@ -55,7 +56,6 @@ if xml_template == 'permeability':
         # Plot the Gaussian decomposition for a specific index
         index = index
         gd.decomposition_single(index, num_components=7, auto_search=False)
-
 
 # predictor = WellLogPredictor(log)
 
@@ -124,7 +124,7 @@ viewer.fig.suptitle(well_name, fontweight='bold', fontsize=30)
 
 # add logo to top left corner #
 
-logo_im = plt.imread('./logo/ca_logo.png')
+logo_im = plt.imread('../logo/ca_logo.png')
 logo_ax = viewer.fig.add_axes([0, 0.85, 0.2, 0.2])
 logo_ax.imshow(logo_im)
 logo_ax.axis('off')
@@ -135,4 +135,3 @@ viewer.show()
 log.export_excel(excel_output)
 
 log.write(las_output)
-

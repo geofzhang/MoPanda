@@ -1,9 +1,9 @@
 from matplotlib import pyplot as plt
 
-from EDA.MoPanda.MoPanda.modules.las_io import LasIO
-from EDA.MoPanda.MoPanda.modules.graphs import LogViewer
-from EDA.MoPanda.MoPanda.modules.electrofacies import electrofacies
-from EDA.MoPanda.MoPanda.modules.utils import ColorCoding as cc
+from modules.electrofacies import electrofacies
+from modules.graphs import LogViewer
+from modules.las_io import LasIO
+from modules.utils import ColorCoding as cc
 
 las_file_path: str = './data/las/Denova1_modified.las'
 tops_file_path = './data/log_info/tops.csv'

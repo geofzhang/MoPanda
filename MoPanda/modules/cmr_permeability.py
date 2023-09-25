@@ -1,9 +1,10 @@
-import numpy as np
-from scipy.optimize import curve_fit
+import os
+
 import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 from openpyxl import Workbook
-import os
+from scipy.optimize import curve_fit
 
 
 class GaussianDecomposition:
@@ -26,7 +27,7 @@ class GaussianDecomposition:
         depths = self.df.iloc[:, 0].values
 
         # Create a new Excel workbook
-        output_file_path = f'./output/{os.path.splitext(self.file_name)[0]}_Decomposed_Gaussian_Distributions.xlsx'
+        output_file_path = f'../output/{os.path.splitext(self.file_name)[0]}_Decomposed_Gaussian_Distributions.xlsx'
         workbook = Workbook()
 
         # Create a sheet for mean, sigma, sum, BVI, FFI, T2lm, and permeability values
@@ -61,7 +62,7 @@ class GaussianDecomposition:
                 gauss_sums = [np.sum(component) for component in gauss_components]
 
                 # Calculate the BVI (Bulk Volume Irreducible) by summing the Gaussian components with 10**mean < 15
-                bvi = np.sum([gauss_sums[j] for j in range(num_components) if 10 ** coeff[j * 3+1] < self.cutoff])
+                bvi = np.sum([gauss_sums[j] for j in range(num_components) if 10 ** coeff[j * 3 + 1] < self.cutoff])
 
                 # Calculate the FFI (Free Fluid Index) by subtracting the BVI from TCMR. If FFI is negative,
                 # set it to zero.
@@ -69,7 +70,8 @@ class GaussianDecomposition:
 
                 # Calculate the BVI distribution
                 bvi_distribution = np.sum(
-                    [gauss_components[j] for j in range(num_components) if 10 ** coeff[j * 3 + 1] < self.cutoff], axis=0)
+                    [gauss_components[j] for j in range(num_components) if 10 ** coeff[j * 3 + 1] < self.cutoff],
+                    axis=0)
 
                 # Subtract the Gaussian components with 10**mean < 50 from the distribution
                 residual_distribution = distribution - bvi_distribution
@@ -82,7 +84,7 @@ class GaussianDecomposition:
 
                 # Calculate the T2lm_2 using the residual distribution as the weights
                 t2lm_ffi = np.exp(np.sum(np.log(10 ** self.ls) * residual_distribution) / np.sum(residual_distribution))
-                permeability = 10 * bvi ** 3 * t2lm_bvi + 3000 * ffi ** 4 * t2lm_ffi ** 1.5
+                permeability = 12 * bvi ** 3 * t2lm_bvi + 4171 * ffi ** 5.5 * t2lm_ffi ** 1.3
 
                 # Write the values to the sheet
                 cell_values = [depths[row_idx], tcmr, bvi, ffi, t2lm_bvi, t2lm_ffi, permeability]
@@ -168,7 +170,7 @@ class GaussianDecomposition:
 
         # Calculate the T2lm_2 using the residual distribution as the weights
         t2lm_ffi = np.exp(np.sum(np.log(10 ** self.ls) * residual_distribution) / np.sum(residual_distribution))
-        permeability = 10 * bvi ** 3 * t2lm_bvi + 3000 * ffi ** 4 * t2lm_ffi ** 1.5
+        permeability = 12 * bvi ** 3 * t2lm_bvi + 4171 * ffi ** 5.5 * t2lm_ffi ** 1.3
 
         print('bvi:', bvi)
         print('ffi:', ffi)
@@ -182,7 +184,7 @@ class GaussianDecomposition:
             plt.semilogx(10 ** self.ls, component, label=f'Peak {j + 1}')
         plt.xlabel('T$_2$ (ms)')
         plt.ylabel('Incremental Porosity (ft$^3$/ft$^3$)')
-        plt.title(f'CMR Peak Decomposition \nDepth: {depths[index]} ft       Porosity: {(bvi+ffi)*100:.2f}%')
+        plt.title(f'CMR Peak Decomposition \nDepth: {depths[index]} ft       Porosity: {(bvi + ffi) * 100:.2f}%')
         plt.legend()
         plt.show()
 

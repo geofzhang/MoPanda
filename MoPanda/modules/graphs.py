@@ -6,16 +6,14 @@ bulk shifting.
 
 """
 
-import os
 import gc
-import numpy as np
-import pandas as pd
+import os
+import xml.etree.ElementTree as ET
+
 import matplotlib as mpl
 import matplotlib.pyplot as plt
-import xml.etree.ElementTree as ET
-from matplotlib.backend_tools import ToolBase, ToolToggleBase
-from mpl_toolkits.axes_grid1 import make_axes_locatable
-from mpl_toolkits.axes_grid1.inset_locator import inset_axes
+import numpy as np
+from matplotlib.backend_tools import ToolToggleBase
 
 mpl.rcParams['backend'] = 'TkAgg'
 plt.rcParams['toolbar'] = 'toolmanager'

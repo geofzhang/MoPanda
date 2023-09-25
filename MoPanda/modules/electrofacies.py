@@ -1,10 +1,11 @@
 import os
+import xml.dom.minidom as minidom
+import xml.etree.ElementTree as ET
 
+import PySimpleGUI as sg
 import numpy as np
 import pandas as pd
-from sklearn.metrics import silhouette_score
-from sklearn.preprocessing import StandardScaler
-from sklearn.decomposition import PCA
+import skfuzzy as fuzz
 from sklearn.cluster import (
     MiniBatchKMeans,
     DBSCAN,
@@ -12,13 +13,12 @@ from sklearn.cluster import (
     OPTICS,
     AgglomerativeClustering,
 )
-import PySimpleGUI as sg
-import skfuzzy as fuzz
-import matplotlib.pyplot as plt
-from EDA.MoPanda.MoPanda.modules.data_analysis import plot_pc_crossplot, plot_pca_variance, plot_pca_subplots, fill_null
-import xml.etree.ElementTree as ET
-import xml.dom.minidom as minidom
-from EDA.MoPanda.MoPanda.modules.utils import ColorCoding
+from sklearn.decomposition import PCA
+from sklearn.metrics import silhouette_score
+from sklearn.preprocessing import StandardScaler
+
+from modules.data_analysis import plot_pca_subplots, fill_null
+from modules.utils import ColorCoding
 
 
 def select_curves(log):
@@ -333,7 +333,7 @@ def electrofacies(
 
         # Save the table to an Excel file with UWI and methods in the file name
         uwi = df['UWI'].iloc[0]  # Assuming UWI is the same for all rows in the DataFrame
-        file_name = f"output/{uwi}_electrofacies_mean_log_responses.xlsx"
+        file_name = f"../output/{uwi}_electrofacies_mean_log_responses.xlsx"
         facies_df.to_excel(file_name, index=False)
         print(f"Mean log responses of electrofacies saved as '{file_name}'")
 
