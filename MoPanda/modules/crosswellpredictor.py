@@ -2,6 +2,7 @@ import os
 import tkinter as tk
 from tkinter import filedialog, messagebox
 import tensorflow as tf
+import tensorflow_probability as tfp
 import lasio
 import matplotlib.pyplot as plt
 import numpy as np
@@ -18,6 +19,9 @@ from sklearn.model_selection import train_test_split
 from datetime import datetime
 from sklearn.utils import resample
 import joblib
+from tensorflow_probability.python.layers import DenseVariational
+from tqdm import tqdm
+
 
 # Register the custom layer before loading the model
 tf.keras.utils.get_custom_objects()['SeqSelfAttention'] = SeqSelfAttention
@@ -160,6 +164,51 @@ def process_y_pred_denorm(y_pred_denorm):
     return y_pred_denorm
 
 
+# Define a probabilistic layer
+def probabilistic_layer(input_shape, units, sample_n):
+    return CustomDenseVariational(
+        units=units,
+        make_posterior_fn=posterior_mean_field,
+        make_prior_fn=prior_trainable,
+        kl_weight=1 / sample_n,
+        input_shape=input_shape
+    )
+
+
+# Define the posterior function
+def posterior_mean_field(kernel_size, bias_size=0, dtype=None):
+    n = kernel_size + bias_size
+    c = np.log(np.expm1(1.))
+    return tf.keras.Sequential([
+        tfp.layers.VariableLayer(2 * n, dtype=dtype),
+        tfp.layers.DistributionLambda(lambda t: tfp.distributions.Normal(
+            loc=t[..., :n],
+            scale=1e-5 + tf.nn.softplus(c + t[..., n:])
+        )),
+    ])
+
+
+# Define the prior function
+def prior_trainable(kernel_size, bias_size=0, dtype=None):
+    n = kernel_size + bias_size
+    return tf.keras.Sequential([
+        tfp.layers.VariableLayer(n, dtype=dtype),
+        tfp.layers.DistributionLambda(lambda t: tfp.distributions.Normal(
+            loc=t, scale=1)),
+    ])
+
+
+def predict_bnn(model, X_pred, n_samples):
+    predictions = []
+    for _ in tqdm(range(n_samples), desc="Predicting Uncertainty", unit="Iteration"):
+        pred = model.predict(X_pred)
+        predictions.append(pred)  # assuming pred.numpy() is the way to extract predictions from the model
+    preds_array = np.array(predictions)
+    mean_prediction = np.mean(preds_array, axis=0)
+    uncertainty = np.std(preds_array, axis=0)
+    return mean_prediction, uncertainty
+
+
 class LossHistory(Callback):
     def __init__(self):
         self.losses = []
@@ -168,11 +217,26 @@ class LossHistory(Callback):
         self.losses.append(logs['loss'])
 
 
+class CustomDenseVariational(DenseVariational):
+    def __init__(self, units, *args, **kwargs):
+        super(CustomDenseVariational, self).__init__(units=units, *args, **kwargs)
+        self.units = units
+
+    def get_config(self):
+        config = super(CustomDenseVariational, self).get_config()
+        config.update({
+            "units": self.units,
+        })
+        return config
+
+
 class CrossWellPredictor(tk.Tk):
     def __init__(self):
         super().__init__()
 
         # Dictionaries to store the well data. Key = filename, Value = DataFrame of well data.
+        self.uncertainty_iterations = 100
+        self.sample_n = None
         self.well_data = None
         self.scaler = None
         self.training_wells = {}
@@ -495,7 +559,10 @@ class CrossWellPredictor(tk.Tk):
             model.add(SeqSelfAttention())
             model.add(LSTM(lstm_units, activation='tanh'))
 
-        model.add(Dense(1, activation='linear'))  # Use linear activation for the output layer
+        if self.calculate_uncertainty.get():
+            model.add(probabilistic_layer(input_shape, 1, self.sample_n))
+        else:
+            model.add(Dense(1, activation='linear'))  # Use linear activation for the output layer
 
         model.compile(optimizer=Adam(learning_rate=learning_rate), loss='mean_squared_error')
         return model
@@ -507,6 +574,7 @@ class CrossWellPredictor(tk.Tk):
         X_train, Y_train, X_test, Y_test = self.prepare_data()
         input_shape = (X_train.shape[1], X_train.shape[2])
         print(input_shape)
+        self.sample_n = X_train.shape[0]
         # Define early stopping
         early_stopping = EarlyStopping(monitor='val_loss', patience=50, restore_best_weights=True)
         filepath = "../output/CrossWellPrediction/weights-{epoch:03d}-{val_loss:.4f}.hdf5"
@@ -514,7 +582,7 @@ class CrossWellPredictor(tk.Tk):
         # Define model checkpoint to save the best model during training
         model_checkpoint = ModelCheckpoint(filepath, monitor='val_loss', save_best_only=True)
 
-        self.model = self.build_model(input_shape)
+        self.model = self.build_model(input_shape=input_shape)
 
         # Create an instance of the custom callback
         loss_history_callback = LossHistory()
@@ -522,7 +590,7 @@ class CrossWellPredictor(tk.Tk):
         # Train the model with early stopping and model checkpoint
         history = self.model.fit(
             X_train, Y_train,
-            epochs=500,
+            epochs=100,
             batch_size=64,
             validation_data=(X_test, Y_test),  # Validation set
             callbacks=[LambdaCallback(on_epoch_end=self.on_epoch_end),
@@ -641,42 +709,23 @@ class CrossWellPredictor(tk.Tk):
             # Normalize the data using the new scalers
             df_imputed[self.selected_x_logs], self.scaler = normalize_data(df_imputed[self.selected_x_logs],
                                                                            self.scaler)
-
             X_pred = df_imputed[self.selected_x_logs].values
 
             # Zero padding and reshaping the prediction matrix
             X_pred_reshaped = segment_data(X_pred, self.window_size)
             X_pred_reshaped = zero_pad(X_pred_reshaped, len(X_pred))
 
-            # Main prediction without uncertainty
-            y_pred = self.model.predict(X_pred_reshaped)
-            y_pred_denorm = self.denormalize_prediction(y_pred, self.scaler)
-            y_pred_denorm = process_y_pred_denorm(y_pred_denorm)
-
             if self.calculate_uncertainty.get():
-                # Perform bootstrapping
-                n_bootstraps = 1000  # adjust the number of bootstraps as needed
-                bootstrap_predictions = []
+                # Main prediction with uncertainty
+                y_pred_mean, y_pred_stddev = predict_bnn(self.model, X_pred_reshaped, self.uncertainty_iterations)
+                y_pred_mean = self.denormalize_prediction(y_pred_mean, self.scaler)
+                y_pred_mean = process_y_pred_denorm(y_pred_mean).reshape(-1, 1)
+                y_pred_stddev = self.denormalize_prediction(y_pred_stddev, self.scaler)
+                print(y_pred_stddev)
 
-                for _ in range(n_bootstraps):
-                    # Sample with replacement
-                    indices = np.random.choice(X_pred_reshaped.shape[0], X_pred_reshaped.shape[0], replace=True)
-                    X_bootstrap = X_pred_reshaped[indices]
-
-                    # Make predictions on the bootstrap sample
-                    y_bootstrap_pred = self.model.predict(X_bootstrap)
-
-                    # Denormalize the prediction for the bootstrap sample
-                    y_bootstrap_pred_denorm = self.denormalize_prediction(y_bootstrap_pred, self.scaler)
-
-                    # Process the denormalized prediction
-                    y_bootstrap_pred_denorm = process_y_pred_denorm(y_bootstrap_pred_denorm)
-
-                    bootstrap_predictions.append(y_bootstrap_pred_denorm)
-
-                # Compute confidence intervals from the bootstrapped predictions
-                lower_bound = np.percentile(bootstrap_predictions, 10, axis=0)
-                upper_bound = np.percentile(bootstrap_predictions, 90, axis=0)
+                # Uncertainty estimation
+                lower_bound = y_pred_mean - 2 * y_pred_stddev
+                upper_bound = y_pred_mean + 2 * y_pred_stddev
 
                 # Convert lower_bound_denorm and upper_bound_denorm to DataFrames
                 lower_bound_df = pd.DataFrame(lower_bound, columns=[self.selected_y_log + '_LOWER_BOUND'])
@@ -687,9 +736,14 @@ class CrossWellPredictor(tk.Tk):
                         i, self.selected_y_log + '_LOWER_BOUND']
                     df.loc[index, self.selected_y_log + '_UPPER_BOUND'] = upper_bound_df.loc[
                         i, self.selected_y_log + '_UPPER_BOUND']
+            else:
+                # Main prediction without uncertainty
+                y_pred = self.model.predict(X_pred_reshaped)
+                y_pred_denorm = self.denormalize_prediction(y_pred, self.scaler)
+                y_pred_mean = process_y_pred_denorm(y_pred_denorm)
 
             # Convert y_pred_denorm to DataFrame
-            y_pred_df = pd.DataFrame(y_pred_denorm, columns=[self.selected_y_log + '_PRE'])
+            y_pred_df = pd.DataFrame(y_pred_mean, columns=[self.selected_y_log + '_PRE'])
 
             # Insert the predicted values back into the original DataFrame using indices
             for i, index in enumerate(original_indices):
@@ -710,7 +764,7 @@ class CrossWellPredictor(tk.Tk):
             print("Prediction output to:", output_file_path)
 
             # Append the results to dictionaries
-            predictions[well_name] = y_pred_denorm
+            predictions[well_name] = y_pred_mean
             if self.calculate_uncertainty.get():
                 lower_bounds[well_name] = lower_bound
                 upper_bounds[well_name] = upper_bound
@@ -720,9 +774,14 @@ class CrossWellPredictor(tk.Tk):
         return predictions, lower_bounds, upper_bounds if self.calculate_uncertainty.get() else predictions
 
     def visualize_uncertainty(self, y_pred, lower_bound, upper_bound, well_name):
+        lower_bound = np.squeeze(lower_bound)
+        upper_bound = np.squeeze(upper_bound)
         plt.figure(figsize=(10, 6))
         plt.plot(y_pred, label='Predicted', color='blue')
-        plt.fill_between(np.arange(len(y_pred)), lower_bound, upper_bound, color='gray', alpha=0.5, label='CI')
+        plt.fill_between(np.arange(len(y_pred)),
+                         lower_bound,
+                         upper_bound,
+                         color='gray', alpha=0.5, label='Uncertainty')
         plt.title(f'Uncertainty Analysis for {well_name}')
         plt.xlabel('Sample Index')
         plt.ylabel('Predicted Value')
