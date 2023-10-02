@@ -27,6 +27,10 @@ def swi(sw, swr, srg, snwr):
     return (sw - swr) / (1 - swr - srg)
 
 
+def sgt(phi):
+    return -0.9696 * phi + 0.5473  # Holtz equation/ Jerauld equation
+
+
 class RelPerm:
     def __init__(self, root):
         self.root = root
@@ -66,11 +70,11 @@ class RelPerm:
         self.cp_entry.insert(0, "41")  # Inserting default value
 
         # Label and Entry for Trapped CO2 Saturation
-        self.srg_label = Label(root, text=r"Enter the Trapped CO2 Saturation:")
-        self.srg_label.grid(row=5, column=0, padx=10, pady=10)
-        self.srg_entry = Entry(root)
-        self.srg_entry.grid(row=5, column=2, padx=10, pady=10)
-        self.srg_entry.insert(0, "0.3")  # Inserting default value
+        self.sgt_max_label = Label(root, text=r"Enter the Maximum Trapped CO2 Saturation:")
+        self.sgt_max_label.grid(row=5, column=0, padx=10, pady=10)
+        self.sgt_max_entry = Entry(root)
+        self.sgt_max_entry.grid(row=5, column=2, padx=10, pady=10)
+        self.sgt_max_entry.insert(0, "0.3")  # Inserting default value
 
         self.submit_button = Button(root, text="Submit", command=self.process_file)
         self.submit_button.grid(row=6, column=2, columnspan=1, padx=10, pady=10)
@@ -85,6 +89,13 @@ class RelPerm:
                 self.pe_lab_entry.insert(0, str(params['Pe_lab'].values[0]))  # Insert Pe_lab
                 self.pe_res_entry.delete(0, 'end')  # Clear previous content
                 self.pe_res_entry.insert(0, str(params['Pe_res'].values[0]))  # Insert Pe_res
+                if not params['Delta Pressure'].empty:
+                    self.cp_entry.delete(0, 'end')  # Clear previous content
+                    self.cp_entry.insert(0, str(params['Delta Pressure'].values[0]))  # Insert Delta pressure
+                if not params['Porosity'].empty:
+                    self.srg_entry.delete(0, 'end')  # Clear previous content
+                    self.srg_entry.insert(0, sgt(str(params['Porosity'].values[0])))  # Insert trapped gas
+
             else:
                 print(f"No parameters found for sample {self.sample_name}")
                 # Show error message if no parameters are found
@@ -133,29 +144,69 @@ class RelPerm:
         self.srg = float(self.srg_entry.get())
 
         df = pd.read_excel(self.filename)
-        print(df)
         df['Capillary Pressure (MPa)'] = df['Capillary Pressure (psi)'] * 0.00689476
         max_cp_mpa = self.max_cp * 0.00689476
-        snwr = np.min(df['Pseudo Wetting-phase Saturation'])
+        swr = np.min(df['Pseudo Wetting-phase Saturation'])
+        sg_max = 1 - swr
+        sw_max = np.max(df['Pseudo Wetting-phase Saturation'])
         df['Capillary Pressure_Reservoir (MPa)'] = df['Capillary Pressure (MPa)'] * self.pe_ratio
-        df['Normalized Wetting-phase Saturation'] = (df['Pseudo Wetting-phase Saturation'] - snwr) / (1 - snwr)
-        Y = df['Capillary Pressure_Reservoir (MPa)']
-        X = df['Normalized Wetting-phase Saturation']
-        popt, _ = curve_fit(fit_function, X, Y)
-        a = popt[0]
-        print(a)
+        df['Normalized Wetting-phase Saturation'] = (df['Pseudo Wetting-phase Saturation'] - swr) / (1 - swr)
+        df['Normalized Wetting-phase Saturation_imbibition'] = (df['Pseudo Wetting-phase Saturation'] - swr) / (
+                1 - swr - self.srg)
+
+        # Create a copy of the DataFrame to preserve the original DataFrame
+        df_copy = df.copy()
+        # Find indices where 'Pseudo Wetting-phase Saturation' is 1
+        indices = df_copy.index[df_copy['Pseudo Wetting-phase Saturation'] == 1].tolist()
+
+        # Drop all those indices except the last one
+        if len(indices) > 1:
+            df_copy = df_copy.drop(indices[:-1])  # Retaining the last index
+
+        df_copy_d = df_copy[(df_copy['Normalized Wetting-phase Saturation'] != 0) | (df_copy.index == indices[-1])]
+        df_copy_i = df_copy[(df_copy['Normalized Wetting-phase Saturation_imbibition'] > 0) |
+                            (df_copy.index == indices[-1]) |
+                            (df_copy['Normalized Wetting-phase Saturation_imbibition'] <= 1)]
+
+        Y_d = df_copy_d['Capillary Pressure_Reservoir (MPa)']
+        X_d = df_copy_d['Normalized Wetting-phase Saturation']
+        Y_i = df_copy_i['Capillary Pressure_Reservoir (MPa)']
+        X_i = df_copy_i['Normalized Wetting-phase Saturation_imbibition']
+
+        popt_d, _ = curve_fit(fit_function, X_d, Y_d)
+        a1 = popt_d[0]
+
         sw_min = df['Pseudo Wetting-phase Saturation'][df['Capillary Pressure (MPa)'] <= max_cp_mpa].iloc[-1]
+        krw_max = krw(sw_max, a1)  # krb_max in Brooks-Corey model
+        krg_max = krg(sw_min, a1)  # krco2_max in Brooks-Corey model
+        print(krg_max)
 
         Xd = np.linspace(1, sw_min, 50)
-        Xi = swi(Xd, sw_min, self.srg, snwr)
-
-        new_df = pd.DataFrame({'Sw_d': Xd})
-        new_df['Sw_i'] = Xi
-        new_df['krw_d'] = krw(Xd, a)
-        new_df['krg_d'] = krg(Xd, a)
-        new_df['krw_i'] = krw(Xi, a)
-        new_df['krg_i'] = krg(Xi, a)
-        new_df['lambda'] = a
+        Xd_norm = np.linspace(1, 0, 50)
+        if sw_min <= (1 - self.srg):
+            popt_i, _ = curve_fit(fit_function, X_i, Y_i)
+            a2 = popt_i[0]
+            Xi = np.linspace(1 - self.srg, sw_min, 50)
+            Xi_norm = np.linspace(1, 0, 50)
+            new_df = pd.DataFrame({'Sw_d': Xd})
+            new_df['Sw_i'] = Xi
+            new_df['krw_d'] = krw(Xd_norm, a1) * krw_max
+            new_df['krg_d'] = krg(Xd_norm, a1) * krg_max
+            new_df['krw_i'] = krw(Xi_norm, a2) * krw_max
+            new_df['krg_i'] = krg(Xi_norm, a2) * krg_max
+            new_df['lambda_d'] = a1
+            new_df['lambda_i'] = a2
+        else:
+            messagebox.showerror("Error", f"Sample {self.sample_name} is too tight to calculate imbibition rel-k.")
+            Xi = np.linspace(0, 0, 50)
+            new_df = pd.DataFrame({'Sw_d': Xd})
+            new_df['Sw_i'] = Xi
+            new_df['krw_d'] = krw(Xd_norm, a1) * krw_max
+            new_df['krg_d'] = krg(Xd_norm, a1) * krg_max
+            new_df['krw_i'] = 0
+            new_df['krg_i'] = 0
+            new_df['lambda_d'] = a1
+            new_df['lambda_i'] = 0
 
         # Save the original DataFrame to one sheet and new_df to another sheet in the same Excel file
         with pd.ExcelWriter(self.filename, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
@@ -176,7 +227,8 @@ class RelPerm:
         ax1.set_ylim(0, 1)
 
         ax2 = ax1.twinx()  # Create a second y-axis
-        line5, = ax2.plot(X, Y, color='#00B945', ls='-',
+        line5, = ax2.plot(df['Pseudo Wetting-phase Saturation'], df['Capillary Pressure_Reservoir (MPa)'],
+                          color='#00B945', ls='-',
                           label='Capillary Pressure\t')  # Plotting on the secondary y-axis
         ax2.set_ylabel(r'Capillary Pressure ($MPa$)')
 
@@ -185,8 +237,10 @@ class RelPerm:
         labels = [l.get_label() for l in lines]
 
         ax2.legend(lines, labels, loc=0)
+        ax2.set_ylim(0, 15)
         plt.title(f'Relative Permeability Curves for Sample {self.sample_name}')
         plt.show()
+
 
 root = Tk()
 my_app = RelPerm(root)
