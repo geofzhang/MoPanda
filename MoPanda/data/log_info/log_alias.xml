@@ -4,6 +4,7 @@
     <CAL_N>
         <CAL_N/>
         <CAL_D/>
+	<CAL_ALIASED/>
         <CAL/>
         <CALI/>
         <C1/>
@@ -108,7 +109,10 @@
 
     <DCOR_N>
         <DCOR_N/>
+	<DCOR_D/>
+	<DCOR_ALIASED/>
         <DRHO_D/>
+	<DRHO_ALIASED/>
         <DRHO/>
         <DC/>
         <DCOR/>
@@ -132,6 +136,8 @@
         <HSGR/>
         <EHGR/>
         <GR_D/>
+	<GR_ALIASED/>
+	<SGR_ALIASED/>
         <HGR/>
         <ECGR/>
         <ECGR_EDTC/>
@@ -201,11 +207,15 @@
 
     <CGR_N>
         <HCGR/>
+	<CGR_N/>
+	<CGR_D/>
+	<CGR_ALIASED/>
     </CGR_N>
 
     <RESSHAL_N>
         <RESSHAL_N/>
         <RESS_D/>
+	<RESS_ALIASED/>
         <RESS/>
         <AHTRX/>
         <ATRX/>
@@ -310,6 +320,7 @@
     <RESMED_N>
         <RESMED_N/>
         <RESM_D/>
+	<RESM_ALIASED/>
         <AHT30/>
         <AIT30/>
         <AST30/>
@@ -368,6 +379,7 @@
     <RESDEEP_N>
         <RESDEEP_N/>
         <RESD_D/>
+	<RESD_ALIASED/>
         <ATRT/>
         <AIT120/>
         <AIT90/>
@@ -512,6 +524,7 @@
     <NPHI_N>
         <NPHI_N/>
         <NPHI_D/>
+	<NPHI_ALIASED/>
         <HNPO_SAN/>
         <HTNP_SAN/>
         <NPOR/>
@@ -529,6 +542,7 @@
         <CNCSGS/>
         <CNCSS/>
         <CNCSSQH/>
+	<CNS/>
         <CNSS/>
         <HASC/>
         <HNPS/>
@@ -559,6 +573,7 @@
     <DPHI_N>
         <DPHI_N/>
         <DPHI_D/>
+	<DPHI_ALIASED/>
         <DPOR/>
         <DPHI/>
         <DPHI_SAN/>
@@ -599,6 +614,7 @@
         <PZSSS/>
         <RPSS/>
         <SSD/>
+	<CDL/>
         <DPH/>
         <APSC/>
         <APSU/>
@@ -617,6 +633,7 @@
         <SPHI_N/>
         <SPHI/>
         <SPHI_D/>
+	<SPHI_ALIASED/>
         <ACPD/>
         <ACPL/>
         <ACPS/>
@@ -629,6 +646,8 @@
     <PE_N>
         <PE_N/>
         <PEF_D/>
+	<PE_ALIASED/>
+	<PEF_ALIASED/>
         <PEGE_INCP/>
         <PE/>
         <PEF/>
@@ -661,6 +680,7 @@
     <RHOB_N>
         <RHOB_N/>
         <RHOB_D/>
+	<RHOB_ALIASED/>
         <DEN/>
         <RHOZ/>
         <RHOB/>
@@ -694,6 +714,7 @@
     <DTC_N>
         <DTC_N/>
         <DTC_D/>
+	<DTC_ALIASED/>
         <DTC/>
         <DT/>
         <DTCO/>
@@ -732,6 +753,7 @@
     <DTS_N>
         <DTS_N/>
         <DTS_D/>
+	<DTS_ALIASED/>
         <DTS/>
         <DTCO/>
         <DTSM/>
@@ -747,6 +769,8 @@
 
     <SP_N>
         <SP_N/>
+	<SP_D/>
+	<SP_ALIASED/>
         <ESP/>
         <HSP/>
         <SP/>
@@ -771,6 +795,7 @@
 
     <SIGM_N>
         <SIGM_N/>
+	<SIGM_ALIASED/>
         <SIGM/>
         <SIGM_ALP/>
         <SIGM_INCP/>
@@ -780,6 +805,7 @@
         <RWA_N/>
         <RWA_HILT/>
         <RWA_D/>
+	<RWA_ALIASED/>
         <RWA/>
     </RWA_N>
 
@@ -787,10 +813,12 @@
         <SALINITY_N/>
         <SALINITY/>
         <SALINITY_D/>
+	<SALINITY_ALIASED/>
     </SALINITY_N>
 
     <RHOMAA_N>
         <RHOMAA_N/>
+	<RHOMAA_ALIASED/>
         <RHGE/>
         <RHGE_INCP/>
         <RHOMAA/>
@@ -799,6 +827,7 @@
 
     <UMAA_N>
         <UMAA_N/>
+	<UMAA_ALIASED/>
         <UGE/>
         <UGE_INCP/>
         <REGE/>
@@ -810,12 +839,14 @@
     <TEMP_N>
         <TEMP_N/>
         <TEMP_D/>
+	<TEMP_ALIASED/>
         <TEMP/>
     </TEMP_N>
 
     <PRESSURE_N>
         <PRESSURE_N/>
         <PRESSURE_D/>
+	<PRESSURE_ALIASED/>
         <BHPR/>
         <BHPR_ADT/>
     </PRESSURE_N>
@@ -823,6 +854,7 @@
     <POR_N>
         <POR_N/>
         <POR_D/>
+	<POR_ALIASED/>
         <POR/>
     </POR_N>
 

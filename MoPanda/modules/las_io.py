@@ -119,7 +119,7 @@ class LasIO(LASFile):
     def load_tops(self, csv_path=None, depth_type='MD', source=None):
         if csv_path is None:
             local_path = os.path.dirname(__file__)
-            csv_path = os.path.join(local_path, '../data/log_info', 'tops.csv')
+            csv_path = os.path.join(local_path, '../data/log_info', 'tops_empty.csv')
 
         top_df = pd.read_csv(csv_path, dtype={'UWI': str, 'Src': str})
         # Change data type to str for columns starting with 'Fm Name'
@@ -183,7 +183,7 @@ class LasIO(LASFile):
 
         if csv_path is None:
             local_path = os.path.dirname(__file__)
-            csv_path = os.path.join(local_path, '../data/calculation_pars', 'fluid_properties.csv')
+            csv_path = os.path.join(local_path, './data/calculation_pars', 'fluid_properties.csv')
 
         df = pd.read_csv(csv_path)
         df = df.set_index('name')
@@ -1414,7 +1414,7 @@ class LasIO(LASFile):
         """
         if filepath is None:
             local_path = os.path.dirname(__file__)
-            filepath = os.path.join(local_path, f"data/OUTPUT/{self.filename}_las2csv.csv")
+            filepath = os.path.join(local_path, f"output/{self.filename}_las2csv.csv")
         if check_file(filepath):
             df = self.df()
             if fill_null:
@@ -1449,7 +1449,7 @@ class LasIO(LASFile):
         """
         if filepath is None:
             local_path = os.path.dirname(__file__)
-            filepath = os.path.join(local_path, f"data/OUTPUT/{self.filename}_edited.las")
+            filepath = os.path.join(local_path, f"output/{self.filename}_edited.las")
         with open(filepath, 'w') as f:
             super(LasIO, self).write(f, version=version, wrap=wrap,
                                      STRT=STRT, STOP=STOP,

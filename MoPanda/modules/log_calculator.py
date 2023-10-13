@@ -20,7 +20,7 @@ class LogCalculator(tk.Frame):
         self.grid(sticky=(tk.N, tk.W, tk.E, tk.S))  # Embed it into the provided frame
         self.create_widgets()
 
-        self.lithology_color_coding = '../data/color_code/lithology_color_code.xml'
+        self.lithology_color_coding = './data/color_code/lithology_color_code.xml'
 
         self.t2_browse_button = tk.Button(self, text="Browse", command=self.browse_t2, state=tk.DISABLED)
         self.t2_browse_button.grid(row=5, column=2)  # Add this line
@@ -52,7 +52,7 @@ class LogCalculator(tk.Frame):
 
         # Start Depth Entry
         self.start_depth = tk.DoubleVar()
-        self.start_depth.set(3800)
+        self.start_depth.set(0)
         self.start_depth_entry = tk.Entry(self, textvariable=self.start_depth)
         self.start_depth_entry.grid(row=2, column=1, padx=10, pady=10)
         tk.Label(self, text="Start Depth:").grid(row=2, column=0, padx=10, pady=10)
@@ -147,7 +147,11 @@ class LogCalculator(tk.Frame):
         log.aliasing()
 
         # Load formation tops
-        log.load_tops(csv_path=tops_file_path, depth_type='MD', source='CA')
+        if tops_file_path:
+            log.load_tops(csv_path=tops_file_path, depth_type='MD', source='CA')
+        else:
+            messagebox.showinfo("Warning", "No formation tops provided. Calculation might be off!")
+            log.load_tops(csv_path=None, depth_type='MD', source=None)
 
         # calculate permeability if permeability template is selected
         if xml_template == 'permeability':
@@ -168,14 +172,15 @@ class LogCalculator(tk.Frame):
 
         # Electrofacies
         logs = [log]  # List of Log objects
-        formations = ['SKULL_CREEK_SH', 'LAKOTA_UPPER', 'LAKOTA_LOWER', 'MORRISON',
-                      'DAYCREEK', 'FLOWERPOT_SH', 'LYONS', 'SUMNER_SATANKA',
-                      'STONE_CORRAL']  # List of formation names (optional)
-        # curves = []
-        curves = ['CAL_N', 'RHOB_N', 'CGR_N', 'SP_N', 'NPHI_N', 'DPHI_N', 'PE_N', 'SGR_N',
-                  'RESSHAL_N', 'RESDEEP_N', 'DTS_N', 'DTC_N', 'TCMR', 'T2LM', 'RHOMAA_N', 'UMAA_N',
-                  'RWA_N']  # List of curve names (optional)
-        log_scale = ['RESSHAL_N', 'RESDEEP_N']  # List of curve names to preprocess on a log scale (optional)
+        formations = []
+        # formations = ['SKULL_CREEK_SH', 'LAKOTA_UPPER', 'LAKOTA_LOWER', 'MORRISON',
+        #               'DAYCREEK', 'FLOWERPOT_SH', 'LYONS', 'SUMNER_SATANKA',
+        #               'STONE_CORRAL']  # List of formation names (optional)
+        curves = []
+        # curves = ['CAL_N', 'RHOB_N', 'CGR_N', 'SP_N', 'NPHI_N', 'DPHI_N', 'PE_N', 'SGR_N',
+        #           'RESSHAL_N', 'RESDEEP_N', 'DTS_N', 'DTC_N', 'TCMR', 'T2LM', 'RHOMAA_N', 'UMAA_N',
+        #           'RWA_N']  # List of curve names (optional)
+        log_scale = ['RESSHAL_N', 'RESMED_N','RESDEEP_N']  # List of curve names to preprocess on a log scale (optional)
         n_components = 0.85  # Number of principal components to keep (optional)
         curve_names = []  # List of names for output electrofacies curves (optional)
         clustering_methods = ['kmeans', 'dbscan', 'affinity', 'agglom',
