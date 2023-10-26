@@ -150,7 +150,7 @@ def kgs_download(save_dir=None):
     Note
     ----
     Function takes approximately one hour to download, unzip, and
-    inventory 20GB of log data. YMMV depending on internet  and
+    inventory 20GB of log data. YMMV depending on internet and
     processor speed.
 
     """

@@ -136,6 +136,7 @@
         <HSGR/>
         <EHGR/>
         <GR_D/>
+        <GR_NORM/>
 	<GR_ALIASED/>
 	<SGR_ALIASED/>
         <HGR/>
@@ -209,6 +210,7 @@
         <HCGR/>
 	<CGR_N/>
 	<CGR_D/>
+        <CGR_NORM/>
 	<CGR_ALIASED/>
     </CGR_N>
 

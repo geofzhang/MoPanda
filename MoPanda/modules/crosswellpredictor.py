@@ -1,6 +1,6 @@
 import os
 import tkinter as tk
-from tkinter import filedialog, messagebox
+from tkinter import filedialog, messagebox, simpledialog, ttk
 import tensorflow as tf
 import tensorflow_probability as tfp
 import lasio
@@ -21,7 +21,6 @@ from sklearn.utils import resample
 import joblib
 from tensorflow_probability.python.layers import DenseVariational
 from tqdm import tqdm
-
 
 # Register the custom layer before loading the model
 tf.keras.utils.get_custom_objects()['SeqSelfAttention'] = SeqSelfAttention
@@ -52,7 +51,7 @@ def impute_data(df, selected_logs, logs_to_log_transform):
     Drop rows from the beginning and the end based on a set of unwanted values
     until a row without those values is encountered.
     """
-    unwanted_values = {np.nan, -999.17, -999.25}
+    unwanted_values = {-np.inf, np.inf, np.nan, -999.17, -999.25}
 
     # Drop rows with unwanted values at the beginning
     while df[selected_logs].iloc[0].isin(unwanted_values).any():
@@ -143,27 +142,6 @@ def zero_pad(data, target_length, padding_value=0):
     return data
 
 
-def process_y_pred_denorm(y_pred_denorm):
-    # Assign 0 to inf values
-    y_pred_denorm = np.where(np.isinf(y_pred_denorm), np.nan, y_pred_denorm)
-
-    # Handle values below 0.00001 and above 1000000
-    y_pred_denorm = np.where(y_pred_denorm < 0.00001, 0.00001, y_pred_denorm)
-    y_pred_denorm = np.where(y_pred_denorm > 100000, 0.00001, y_pred_denorm)
-
-    # Remove values above 10k
-    y_pred_denorm = np.where(y_pred_denorm > 5000, np.nan, y_pred_denorm)
-
-    # Interpolate removed values
-    y_pred_denorm = np.interp(np.arange(len(y_pred_denorm)), np.where(~np.isnan(y_pred_denorm))[0],
-                              y_pred_denorm[~np.isnan(y_pred_denorm)])
-
-    # # Apply moving average with a window of 5
-    # y_pred_denorm = np.convolve(y_pred_denorm, np.ones(4) / 4, mode='same')
-
-    return y_pred_denorm
-
-
 # Define a probabilistic layer
 def probabilistic_layer(input_shape, units, sample_n):
     return CustomDenseVariational(
@@ -217,6 +195,37 @@ class LossHistory(Callback):
         self.losses.append(logs['loss'])
 
 
+class LogDetailsDialog(simpledialog.Dialog):
+    def body(self, master):
+        # Create and place labels, entry fields, and checkbox
+        ttk.Label(master, text="Mnemonic:").grid(row=0, sticky=tk.W)
+        ttk.Label(master, text="Description:").grid(row=1, sticky=tk.W)
+        ttk.Label(master, text="Unit:").grid(row=2, sticky=tk.W)
+
+        self.mnemonic_entry = ttk.Entry(master)
+        self.description_entry = ttk.Entry(master)
+        self.unit_entry = ttk.Entry(master)
+
+        self.mnemonic_entry.grid(row=0, column=1)
+        self.description_entry.grid(row=1, column=1)
+        self.unit_entry.grid(row=2, column=1)
+
+        # Checkbox to decide replacement
+        self.replace_existing_var = tk.BooleanVar()
+        self.replace_existing_log = ttk.Checkbutton(master, text="Replace existing log if it exists",
+                                                    variable=self.replace_existing_var)
+        self.replace_existing_log.grid(row=3, columnspan=2, sticky=tk.W)
+
+        return self.mnemonic_entry  # Initial focus
+
+    def apply(self):
+        # Set the values to be retrieved
+        self.mnemonic = self.mnemonic_entry.get()
+        self.description = self.description_entry.get()
+        self.unit = self.unit_entry.get()
+        self.replace_existing = self.replace_existing_var.get()
+
+
 class CustomDenseVariational(DenseVariational):
     def __init__(self, units, *args, **kwargs):
         super(CustomDenseVariational, self).__init__(units=units, *args, **kwargs)
@@ -235,20 +244,25 @@ class CrossWellPredictor(tk.Tk):
         super().__init__()
 
         # Dictionaries to store the well data. Key = filename, Value = DataFrame of well data.
+        self.las_file_paths = None
+        self.current_file_type = None
         self.uncertainty_iterations = 100
         self.sample_n = None
         self.well_data = None
         self.scaler = None
         self.training_wells = {}
         self.prediction_wells = {}
+        self.las_file_paths = {}
         self.losses = []
         self.window_size = 1
         self.imbalanced_data = False
         self.method = 'LSTM'
 
         # Define logs to log-transform
-        self.logs_to_log_transform = ['RESDEEP_N', 'K_SDR_N', 'K_GD_N', 'K_TIM_N', 'K_SDR', 'RESD_D']
-
+        self.logs_to_log_transform = ['RESDEEP_N', 'K_SDR_N', 'K_GD_N', 'K_TIM_N', 'K_SDR', 'K_SDR_PRE', 'RESD_D',
+                                      'RESS_D', 'RESSHAL_N']
+        self.logs_to_postprocess = ['K_SDR_N', 'K_GD_N', 'K_TIM_N', 'K_SDR', 'K_SDR_PRE']
+        self.pe_logs = ['PEF_D', 'PE_N', 'PEF_N']
         # Attributes to save the selected logs
         self.selected_x_logs = []
         self.selected_y_log = ""
@@ -355,6 +369,33 @@ class CrossWellPredictor(tk.Tk):
         dropout_rate = float(self.dropout_rate_entry.get())  # Add this line to retrieve dropout rate
         return lstm_units, learning_rate, dropout_rate
 
+    def process_y_pred_denorm(self, y_pred_denorm):
+        # Assign 0 to inf values
+        y_pred_denorm = np.where(np.isinf(y_pred_denorm), np.nan, y_pred_denorm)
+
+        if self.selected_y_log in self.logs_to_postprocess:
+            # Handle values below 0.00001 and above 1000000
+            y_pred_denorm = np.where(y_pred_denorm < 0.00001, 0.00001, y_pred_denorm)
+            y_pred_denorm = np.where(y_pred_denorm > 100000, 0.00001, y_pred_denorm)
+
+            # Remove values above 10k
+            y_pred_denorm = np.where(y_pred_denorm > 5000, np.nan, y_pred_denorm)
+            print("You are predicting Resistivity or Permeability log.")
+
+        if self.selected_y_log in self.pe_logs:
+            y_pred_denorm = np.where(y_pred_denorm < 1, np.nan, y_pred_denorm)
+            y_pred_denorm = np.where(y_pred_denorm > 8, np.nan, y_pred_denorm)
+            print("You are predicting PE log.")
+
+        # Interpolate removed values
+        y_pred_denorm = np.interp(np.arange(len(y_pred_denorm)), np.where(~np.isnan(y_pred_denorm))[0],
+                                  y_pred_denorm[~np.isnan(y_pred_denorm)])
+
+        # # Apply moving average with a window of 5
+        # y_pred_denorm = np.convolve(y_pred_denorm, np.ones(4) / 4, mode='same')
+
+        return y_pred_denorm
+
     def prepare_data(self):
         # Combine the data of all training wells
         combined_data = pd.concat(list(self.training_wells.values()), ignore_index=True)
@@ -395,27 +436,70 @@ class CrossWellPredictor(tk.Tk):
         return X_train, Y_train, X_test, Y_test
 
     def upload_well_data(self, mode):
-        file_path = filedialog.askopenfilename(filetypes=[("All Supported Types", ".csv .xlsx .las"),
-                                                          ("CSV files", "*.csv"),
-                                                          ("Excel files", "*.xlsx"),
-                                                          ("LAS files", "*.las")])
+        file_paths = filedialog.askopenfilenames(filetypes=[("All Supported Types", ".csv .xlsx .las"),
+                                                            ("CSV files", "*.csv"),
+                                                            ("Excel files", "*.xlsx"),
+                                                            ("LAS files", "*.las")])
 
-        if file_path:
+        if not file_paths:
+            return
+
+        # Check if all selected files have the same extension
+        file_extensions = {os.path.splitext(path)[1] for path in file_paths}
+        if len(file_extensions) > 1:
+            messagebox.showerror("File Type Error", "Please select files of the same type.")
+            return
+
+        # Store the file type (assumes only one type due to previous check)
+        self.current_file_type = file_extensions.pop()
+
+        for file_path in file_paths:
+            filename = os.path.splitext(os.path.basename(file_path))[0]
+            print(filename)
             if file_path.endswith('.csv'):
                 self.well_data = pd.read_csv(file_path)
             elif file_path.endswith('.xlsx'):
-                self.well_data = pd.read_excel(file_path)
+                self.well_data = pd.read_excel(file_path, sheet_name=1)
             elif file_path.endswith('.las'):
-                self.well_data = lasio.read(file_path).df
+                self.well_data = lasio.read(file_path).df().reset_index()
+                self.las_file_paths[filename] = file_path
 
             # Store the data based on the mode (train/predict)
-            filename = file_path.split("/")[-1]
+
             if mode == "train":
                 self.training_wells[filename] = self.well_data
                 self.train_listbox.insert(tk.END, filename)
             else:
                 self.prediction_wells[filename] = self.well_data
                 self.predict_listbox.insert(tk.END, filename)
+
+    def remove_selected(self, mode):
+        if mode == "train":
+            selected = self.train_listbox.curselection()
+            if selected:
+                filename = self.train_listbox.get(selected)
+                del self.training_wells[filename]
+                self.train_listbox.delete(selected)
+        elif mode == "predict":
+            selected = self.predict_listbox.curselection()
+            if selected:
+                filename = self.predict_listbox.get(selected)
+                del self.prediction_wells[filename]
+
+                # Remove from las_file_paths if it exists there
+                if filename in self.las_file_paths:
+                    del self.las_file_paths[filename]
+
+                self.predict_listbox.delete(selected)
+
+    def prompt_log_details(self):
+        """
+        Prompt the user for mnemonic, description, unit, and replacement option of the log in a single dialog.
+        """
+        dialog = LogDetailsDialog(self.master, title="Enter Log Details")
+
+        # Use the details from the dialog
+        return dialog.mnemonic, dialog.description, dialog.unit, dialog.replace_existing
 
     def identify_common_logs(self):
         # Get all column sets from training and prediction wells
@@ -449,20 +533,6 @@ class CrossWellPredictor(tk.Tk):
         self.y_log_selection_listbox.delete(0, tk.END)
         for log in common_logs:
             self.y_log_selection_listbox.insert(tk.END, log)
-
-    def remove_selected(self, mode):
-        if mode == "train":
-            selected = self.train_listbox.curselection()
-            if selected:
-                filename = self.train_listbox.get(selected)
-                del self.training_wells[filename]
-                self.train_listbox.delete(selected)
-        elif mode == "predict":
-            selected = self.predict_listbox.curselection()
-            if selected:
-                filename = self.predict_listbox.get(selected)
-                del self.prediction_wells[filename]
-                self.predict_listbox.delete(selected)
 
     def confirm_x_selection(self):
         selected_logs = [self.log_selection_listbox.get(i) for i in self.log_selection_listbox.curselection()]
@@ -535,7 +605,7 @@ class CrossWellPredictor(tk.Tk):
 
     def build_model(self, input_shape, lstm_units=200, learning_rate=0.01, dropout_rate=0.2):
         model = Sequential()
-        print(self.method)
+        print('Algorithm using in the Neural Network:', self.method)
 
         if self.method == "CNN-LSTM":
             # Add 1D Convolutional layers
@@ -573,14 +643,19 @@ class CrossWellPredictor(tk.Tk):
 
         X_train, Y_train, X_test, Y_test = self.prepare_data()
         input_shape = (X_train.shape[1], X_train.shape[2])
-        print(input_shape)
         self.sample_n = X_train.shape[0]
+
+        # Create output folder
+        current_time = datetime.now().strftime('%m%d%H%M')
+        output_folder = os.path.join('./output/CrossWellPrediction/', f'Training Data_{self.selected_y_log}_{current_time}')
+        os.makedirs(output_folder, exist_ok=True)
+
         # Define early stopping
         early_stopping = EarlyStopping(monitor='val_loss', patience=50, restore_best_weights=True)
-        filepath = "../output/CrossWellPrediction/weights-{epoch:03d}-{val_loss:.4f}.hdf5"
 
-        # Define model checkpoint to save the best model during training
-        model_checkpoint = ModelCheckpoint(filepath, monitor='val_loss', save_best_only=True)
+        # Define model checkpoint
+        model_filepath = os.path.join(output_folder, 'best_model.keras')
+        model_checkpoint = ModelCheckpoint(model_filepath, monitor='val_loss', save_best_only=True, mode='min')
 
         self.model = self.build_model(input_shape=input_shape)
 
@@ -590,7 +665,7 @@ class CrossWellPredictor(tk.Tk):
         # Train the model with early stopping and model checkpoint
         history = self.model.fit(
             X_train, Y_train,
-            epochs=100,
+            epochs=500,
             batch_size=64,
             validation_data=(X_test, Y_test),  # Validation set
             callbacks=[LambdaCallback(on_epoch_end=self.on_epoch_end),
@@ -611,9 +686,8 @@ class CrossWellPredictor(tk.Tk):
             'val_loss': history.history['val_loss']
         })
 
-        current_time = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = f'loss_values_{current_time}.csv'
-        file_path = os.path.join('../output/CrossWellPrediction/', filename)
+        file_path = os.path.join(output_folder, filename)
 
         loss_df.to_csv(file_path, index=False)
 
@@ -672,18 +746,18 @@ class CrossWellPredictor(tk.Tk):
                 # Check if POR_N exists and if it's equal to 0
                 if ('POR_N' in df.columns and df.loc[index, 'POR_N'] == 0) or \
                         ('POR_N' not in df.columns and 'POR_D' in df.columns and df.loc[index, 'POR_D'] == 0):
-                    df.loc[index, self.selected_y_log + '_PRE'] = np.nan
+                    df.loc[index, self.selected_y_log + '_PRE'] = 0.00001
                 elif (df.loc[index, 'NPHI_N'] < 0 or df.loc[index, 'DPHI_N'] < 0 or
                       (df.loc[index, 'DPHI_N'] - df.loc[index, 'NPHI_N']) > 0.14):
-                    df.loc[index, self.selected_y_log + '_PRE'] = np.nan
+                    df.loc[index, self.selected_y_log + '_PRE'] = 0.00001
             elif 'NPHI_D' in df.columns and 'DPHI_D' in df.columns:
                 # Check if POR_D exists and if it's equal to 0
                 if ('POR_D' in df.columns and df.loc[index, 'POR_D'] == 0) or \
                         ('POR_D' not in df.columns and 'POR_N' in df.columns and df.loc[index, 'POR_N'] == 0):
-                    df.loc[index, self.selected_y_log + '_PRE'] = np.nan
+                    df.loc[index, self.selected_y_log + '_PRE'] = 0.00001
                 elif (df.loc[index, 'NPHI_D'] < 0 or df.loc[index, 'DPHI_D'] < 0 or
                       (df.loc[index, 'DPHI_D'] - df.loc[index, 'NPHI_D']) > 0.14):
-                    df.loc[index, self.selected_y_log + '_PRE'] = np.nan
+                    df.loc[index, self.selected_y_log + '_PRE'] = 0.00001
         pass
 
     def predict_for_each_well(self):
@@ -692,11 +766,19 @@ class CrossWellPredictor(tk.Tk):
         lower_bounds = {}
         upper_bounds = {}
 
-        # Define the output directory path
-        output_directory = "../output/CrossWellPrediction"
-
+        # Create output folder
+        current_time = datetime.now().strftime('%m%d%H%M')
+        output_directory = os.path.join('./output/CrossWellPrediction/', f'Predictions_{self.selected_y_log}_{current_time}')
         # Create the output directory if it doesn't exist
         os.makedirs(output_directory, exist_ok=True)
+
+        las_wells = set(self.las_file_paths.keys())
+        predicting_wells = set(self.prediction_wells.keys())
+        print('las_wells', las_wells)
+        print('predicting_wells', predicting_wells)
+        # Check if any of the wells' original file was a .las and prompt for details
+        if any(well_name in self.las_file_paths for well_name in self.prediction_wells.keys()):
+            mnemonic, description, unit, replace_existing = self.prompt_log_details()
 
         for well_name, df in self.prediction_wells.items():
             # Handle missing data
@@ -719,7 +801,7 @@ class CrossWellPredictor(tk.Tk):
                 # Main prediction with uncertainty
                 y_pred_mean, y_pred_stddev = predict_bnn(self.model, X_pred_reshaped, self.uncertainty_iterations)
                 y_pred_mean = self.denormalize_prediction(y_pred_mean, self.scaler)
-                y_pred_mean = process_y_pred_denorm(y_pred_mean).reshape(-1, 1)
+                y_pred_mean = self.process_y_pred_denorm(y_pred_mean).reshape(-1, 1)
                 y_pred_stddev = self.denormalize_prediction(y_pred_stddev, self.scaler)
                 print(y_pred_stddev)
 
@@ -740,7 +822,7 @@ class CrossWellPredictor(tk.Tk):
                 # Main prediction without uncertainty
                 y_pred = self.model.predict(X_pred_reshaped)
                 y_pred_denorm = self.denormalize_prediction(y_pred, self.scaler)
-                y_pred_mean = process_y_pred_denorm(y_pred_denorm)
+                y_pred_mean = self.process_y_pred_denorm(y_pred_denorm)
 
             # Convert y_pred_denorm to DataFrame
             y_pred_df = pd.DataFrame(y_pred_mean, columns=[self.selected_y_log + '_PRE'])
@@ -750,16 +832,34 @@ class CrossWellPredictor(tk.Tk):
                 df.loc[index, self.selected_y_log + '_PRE'] = y_pred_df.loc[i, self.selected_y_log + '_PRE']
 
             # Apply imputation based on conditions
-            self.apply_imputation_conditions(df, original_indices)
+            if self.selected_y_log in self.logs_to_postprocess:
+                self.apply_imputation_conditions(df, original_indices)
 
-            # Extract the well name without the file extension
-            file_name = os.path.splitext(well_name)[0]
+            if well_name in self.las_file_paths:
 
-            # Define the file path for saving the prediction
-            output_file_path = os.path.join(output_directory, file_name + '_Predicted.csv')
+                # Read original LAS file from the stored path
+                las = lasio.read(self.las_file_paths[well_name])
+                if replace_existing and self.selected_y_log in las.keys():
+                    # Replace the original log
+                    las[self.selected_y_log] = df[self.selected_y_log + '_PRE'].values
+                    if unit:
+                        las.curves[self.selected_y_log].unit = unit
+                    if description:
+                        las.curves[self.selected_y_log].descr = description
+                else:
+                    # Add the predicted log
+                    las.append_curve(mnemonic, df[self.selected_y_log + '_PRE'].values, unit=unit, descr=description)
 
-            # Write the DataFrame to the specified file path
-            df.to_csv(output_file_path, index=False)
+                # Save the LAS file with the predictions
+                output_file_path = os.path.join(output_directory, well_name + '_Predicted.las')
+                las.write(output_file_path)
+
+            else:
+                # Define the file path for saving the prediction
+                output_file_path = os.path.join(output_directory, well_name + '_Predicted.csv')
+
+                # Write the DataFrame to the specified file path
+                df.to_csv(output_file_path, index=False)
 
             print("Prediction output to:", output_file_path)
 

@@ -13,6 +13,10 @@ from modules.utils import check_file
 
 # Major Log subclass that inherits the LASFile superclass and perform expansive mathematical petrophysics analysis and
 # data analysis.LOG
+def check_valid_data(curve_data, depth_index):
+    valid_data = curve_data[depth_index]
+    return not (np.all(np.isnan(valid_data)) or np.all(valid_data == 0))
+
 
 class LasIO(LASFile):
     def __init__(self, file_ref=None, **kwargs):
@@ -33,13 +37,12 @@ class LasIO(LASFile):
             column_data = df[column]
             column_start_depth = column_data.first_valid_index()
             column_end_depth = column_data.last_valid_index()
-
             # Exclude logs that are not having enough data coverage
-            if column_start_depth <= start_depth and column_end_depth >= end_depth:
-
-                # Exclude logs that only contain 0, 0.5, and 1.
-                if not column_data.isin([0, 0.5, 1]).all():
-                    preserved_columns.append(column)
+            if column_start_depth:
+                if column_start_depth <= start_depth and column_end_depth >= end_depth:
+                    # Exclude logs that only contain 0, 0.5, and 1.
+                    if not column_data.isin([0, 0.5, 1]).all():
+                        preserved_columns.append(column)
 
         preserved_df = df[preserved_columns]
         n_preserved_logs = len(preserved_df.columns)
@@ -183,7 +186,7 @@ class LasIO(LASFile):
 
         if csv_path is None:
             local_path = os.path.dirname(__file__)
-            csv_path = os.path.join(local_path, './data/calculation_pars', 'fluid_properties.csv')
+            csv_path = os.path.join(local_path, '../data/calculation_pars', 'fluid_properties.csv')
 
         df = pd.read_csv(csv_path)
         df = df.set_index('name')
@@ -201,19 +204,18 @@ class LasIO(LASFile):
         depth_index = np.intersect1d(np.where(self[0] >= top)[0],
                                      np.where(self[0] < bottom)[0])
         depths = self[0][depth_index]
-
-        if 'PR' in self.curves:
+        if 'PR' in self.curves and check_valid_data(self['PR'], depth_index):
             pr = self['PR'][depth_index]
         else:
             pr = pr
 
-        if 'TEMP_N' in self.curves:
+        if 'TEMP_N' in self.curves and check_valid_data(self['TEMP_N'], depth_index):
             form_temp = self['TEMP_N'][depth_index]
             # temp_grad = (self['TEMP_N'][depth_index[-1]] - self['TEMP_N'][depth_index[0]]) / (depths[-1] - depths[0])
         else:
             form_temp = mast + temp_grad * depths
 
-        if 'PRESSURE_N' in self.curves:
+        if 'PRESSURE_N' in self.curves and check_valid_data(self['PRESSURE_N'], depth_index):
             pore_press = self['PRESSURE_N'][depth_index]
             press_grad = (self['PRESSURE_N'][depth_index[-1]] - self['PRESSURE_N'][depth_index[0]]) / (
                     depths[-1] - depths[0])
@@ -221,15 +223,15 @@ class LasIO(LASFile):
             pore_press = press_grad * depths
 
         # Calculate Neutron Porosity if only Neutron density (.API) is available.
-        if 'NEUT' in self.curves:
+        if 'NEUT' in self.curves and np.any(self['NPHI_N'] > 100):
             self['NPHI_N'] = self['NEUT'] * 0.19 / 1000 - 0.02  # Quartz matrix calibrated porosity
 
         # Calculate
         # effective porosity
-        if 'POR_N' in self.curves:
+        if 'POR_N' in self.curves and check_valid_data(self['POR_N'], depth_index):
             porosity = self['POR_N'][depth_index]
-        elif 'TCMR' in self.curves:
-            porosity = self['TCMR'][depth_index]
+        elif 'TCMR_N' in self.curves and check_valid_data(self['TCMR_N'], depth_index):
+            porosity = self['TCMR_N'][depth_index]
         elif 'NPHI_N' in self.curves and 'DPHI_N' in self.curves:
             nphi = self['NPHI_N'][depth_index]
             dphi = self['DPHI_N'][depth_index]
@@ -239,7 +241,7 @@ class LasIO(LASFile):
             if np.any(dphi > 1):
                 dphi /= 100
 
-            porosity = np.sqrt(nphi ** 2 + dphi ** 2)
+            porosity = ((nphi + dphi) / 2 + np.sqrt((nphi ** 2 + dphi ** 2) / 2)) / 2
         elif 'NPHI_N' in self.curves:
             nphi = self['NPHI_N'][depth_index]
             if np.any(nphi > 1):
@@ -255,7 +257,7 @@ class LasIO(LASFile):
             return
 
         # water properties
-        if 'RWA_N' in self.curves:
+        if 'RWA_N' in self.curves and check_valid_data(self['RWA_N'], depth_index):
             rwa = self['RWA_N'][depth_index]
         # Load Rwa if log is available
         elif 'RESDEEP_N' in self.curves:
@@ -304,7 +306,7 @@ class LasIO(LASFile):
         if tds == 'geoloil':
             tds_nacl = 1 / (rwa75 - 0.0123) / (1.79 * 0.0001)  # GeolOil's method
         elif tds == 'crain':
-            tds_nacl = 40000 / form_temp / (rwa ** 1.14)  # Crain's method
+            tds_nacl = 400000 / form_temp / (rwa ** 1.14)  # Crain's method
         else:
             tds_nacl = 10 ** ((3.562 - (np.log10(rwa75 - 0.0123))) / 0.955)  # Baker Atlas's method from Crain's PH
 
@@ -512,16 +514,16 @@ class LasIO(LASFile):
                                   (2.6 * pore_press[pp_gt_bp] ** 1.187 * 10 ** (-0.000039 * pore_press[pp_gt_bp] - 5))
 
         output_curves = [
-            {'mnemonic': 'SALINITY_N', 'data': tds_nacl, 'unit': 'ppm',
+            {'mnemonic': 'SALINITY', 'data': tds_nacl, 'unit': 'ppm',
              'descr': 'Calculated NaCl Equivalent Salinity'},
 
-            {'mnemonic': 'POR_N', 'data': porosity, 'unit': 'v/v',
+            {'mnemonic': 'POROSITY', 'data': porosity, 'unit': 'v/v',
              'descr': 'Calculated Porosity'},
 
             {'mnemonic': 'PORE_PRESS', 'data': pore_press, 'unit': 'psi',
              'descr': 'Calculated Pore Pressure'},
 
-            {'mnemonic': 'TEMP_N', 'data': form_temp, 'unit': 'F',
+            {'mnemonic': 'TEMP', 'data': form_temp, 'unit': 'F',
              'descr': 'Calculated Reservoir Temperature'},
 
             {'mnemonic': 'NES', 'data': nes, 'unit': 'psi',
@@ -630,7 +632,7 @@ class LasIO(LASFile):
             fluid_properties_parameters_from_csv
 
         """
-        if top and bottom:
+        if (not formations) and top and bottom:
             top = top
             bottom = bottom
             params = self.fluid_properties_params[parameter]
@@ -644,7 +646,7 @@ class LasIO(LASFile):
                 params = self.fluid_properties_params[parameter]
                 self.fluid_properties(top=top, bottom=bottom, **params)
 
-    def load_multilateral_parameters(self, csv_path=None):
+    def load_multimineral_parameters(self, csv_path=None):
         """
         Reads parameters from a csv for input into the multimineral
         model.
@@ -685,7 +687,7 @@ class LasIO(LASFile):
                            buckles_parameter=-1):
 
         # initialize required curves
-        required_raw_curves = ['CGR_N', 'NPHI_N', 'RHOB_N', 'RESDEEP_N']
+        required_raw_curves = ['SGR_N', 'NPHI_N', 'RHOB_N', 'RESDEEP_N']
 
         # check if PE is available
         if 'PE_N' in self.keys():
@@ -702,7 +704,7 @@ class LasIO(LASFile):
 
         required_curves_from_fluid_properties = ['RW', 'RHO_HC',
                                                  'RHO_W', 'NPHI_HC',
-                                                 'NPHI_W', 'TEMP_N',
+                                                 'NPHI_W', 'TEMP',
                                                  'NES', 'PORE_PRESS']
 
         for curve in required_curves_from_fluid_properties:
@@ -854,7 +856,7 @@ class LasIO(LASFile):
                                       descr=curve['descr'])
 
         min_x_curves = [
-            {'mnemonic': 'V' + name_log_x, 'data': np.copy(nulls),
+            {'mnemonic': 'BV' + name_log_x, 'data': np.copy(nulls),
              'unit': 'v/v', 'descr': 'Bulk Volume Fraction ' + name_x},
             {'mnemonic': 'V' + name_log_x, 'data': np.copy(nulls),
              'unit': 'v/v', 'descr': 'Matrix Volume Fraction ' + name_x},
@@ -924,6 +926,11 @@ class LasIO(LASFile):
 
             diff = 1
             counter = 0
+
+            # Clean Resistivity Values
+            if self['RESDEEP_N'][i] == 0:
+                self['RESDEEP_N'][i] = self['RESDEEP_N'][i] + 0.01
+
             while diff > 1 * 10 ** -3 and counter < 20:
                 counter += 1
 
@@ -932,8 +939,11 @@ class LasIO(LASFile):
                 nphia = self['NPHI_N'][i] + (nphi_matrix - nphi_om) * vom
 
                 ### clay solver ###
-                gr_index = np.clip((self['CGR_N'][i] - gr_matrix) \
-                                   / (gr_clay - gr_matrix), 0, 1)
+                if self['SGR_N'][i] < gr_matrix:
+                    gr_index = 0
+                else:
+                    gr_index = np.clip((self['SGR_N'][i] - gr_matrix) \
+                                       / (gr_clay - gr_matrix), 0, 1)
 
                 ### linear vclay method ###
                 vclay_linear = gr_index
@@ -1035,6 +1045,11 @@ class LasIO(LASFile):
                 if use_pe:
                     pe_clean = (self['PE_N'][i] - (pe_om * bvom + pe_clay * bvclay + pe_pyr * bvpyr)) / \
                                (1 - bvom - bvclay - bvpyr)
+
+                    # For debugging:
+                    # print("Number of NaN in rhob_clean:", np.isnan(rhob_clean).sum(), 'and index is', i)
+                    # print("Number of NaN in nphi_clean:", np.isnan(nphi_clean).sum())
+                    # print("Number of NaN in pe_clean:", np.isnan(pe_clean).sum())
 
                     l_clean = np.asarray([rhob_clean, nphi_clean,
                                           pe_clean, 1])
@@ -1251,7 +1266,7 @@ class LasIO(LASFile):
                 if cec <= 0:
                     cec = 10 ** (1.9832 * vclay - 2.4473)
 
-                rw77 = self['RESDEEP_N'][i] * (self['TEMP_N'][i] + 6.8) \
+                rw77 = self['RESDEEP_N'][i] * (self['TEMP'][i] + 6.8) \
                        / 83.8
 
                 b = 4.6 * (1 - 0.6 * np.exp(-0.77 / rw77))
@@ -1278,7 +1293,7 @@ class LasIO(LASFile):
                           self['BO'][i]  # Mmbbl per sample rate
 
                 elif hc_class == 'GAS':
-                    langslope = (-0.08 * self['TEMP_N'][i] + 2 * ro + 22.75) / 2
+                    langslope = (-0.08 * self['TEMP'][i] + 2 * ro + 22.75) / 2
                     gas_ads = langslope * vom * 100 * \
                               (self['PORE_PRESS'][i] / (self['PORE_PRESS'][i] + lang_press))
 
@@ -1380,7 +1395,7 @@ class LasIO(LASFile):
             self['BVWF'][depth_index] = self['BVW'][depth_index] - \
                                         self['BVWI'][depth_index]
 
-    def formation_multimineral_model(self, formations=None,
+    def formation_multimineral_model(self, formations=None, top=None, bottom=None,
                                      parameter='default'):
         """
         Calculate multimineral model over formations with loaded parameters
@@ -1394,15 +1409,19 @@ class LasIO(LASFile):
             Loaded from mineral_parameters function
 
         """
-        if not formations:
-            formations = list(self.tops.keys())
-        for form in formations:
-            top = self.tops[form]
-            bottom = self.formation_bottom_depth(form)
-
+        if (not formations) and top and bottom:
+            top = top
+            bottom = bottom
             params = self.multimineral_parameters[parameter]
-
             self.multimineral_model(top=top, bottom=bottom, **params)
+        else:
+            if not formations:
+                formations = list(self.tops.keys())
+            for form in formations:
+                top = self.tops[form]
+                bottom = self.formation_bottom_depth(form)
+                params = self.multimineral_parameters[parameter]
+                self.multimineral_model(top=top, bottom=bottom, **params)
 
     def export_csv(self, filepath=None, fill_null=True, **kwargs):
         """

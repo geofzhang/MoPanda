@@ -76,6 +76,7 @@ def electrofacies(
         clustering_params=None,
         cluster_range=None,
         template=None,
+        template_xml_path=None,
         lithology_color_coding=None,
         masking=None
 ):
@@ -132,15 +133,15 @@ def electrofacies(
 
     if not curves:
         layout = [
-            [sg.Text("No curve names provided. Do you want to load default triple combo curves?")],
+            [sg.Text("No log names provided. Do you want to load default logs for electrofacies classification?")],
             [sg.Button("Yes", key="-DEFAULT_CURVES-"), sg.Button("No", key="-MANUAL_CURVES-")]
         ]
-        window = sg.Window("Curve Selection", layout)
+        window = sg.Window("Logs for Electrofacies Classification", layout)
         event, _ = window.read()
         window.close()
 
         if event == "-DEFAULT_CURVES-":
-            curves = ['CAL_N', 'CGR_N', 'SP_N', 'DTC_N', 'POR_N', 'RESDEEP_N', 'NPHI_N', 'DPHI_N',
+            curves = ['CAL_N', 'SGR_N', 'DTC_N', 'PHIE', 'RESDEEP_N', 'NPHI_N', 'DPHI_N',
                       'RHOB_N', 'PE_N']
         elif event == "-MANUAL_CURVES-":
             curves = select_curves(logs[0])
@@ -172,10 +173,12 @@ def electrofacies(
     }
 
     file_dir = os.path.dirname(__file__)
-    if template is None:
+    if template_xml_path:
+        template_xml_path = template_xml_path
+    elif template_xml_path is None and template is None:
+        print('No template or template path assigned, loading default raw template.')
         template_xml_path = os.path.join(file_dir, '../data/template',
                                          'default_raw_template.xml')
-
     else:
         if template in default_templates_paths:
             file_name = default_templates_paths[template]
@@ -216,7 +219,8 @@ def electrofacies(
     for df in dfs:
 
         for s in log_scale:
-            df[s] = np.log(df[s])
+            if s in df.columns:
+                df[s] = np.log10(df[s]+0.1)
 
         # Cleaning and filling null data within depth range
         df = fill_null(df)
@@ -333,7 +337,7 @@ def electrofacies(
 
         # Save the table to an Excel file with UWI and methods in the file name
         uwi = df['UWI'].iloc[0]  # Assuming UWI is the same for all rows in the DataFrame
-        file_name = f"../output/{uwi}_electrofacies_mean_log_responses.xlsx"
+        file_name = f"./output/{uwi}_electrofacies_mean_log_responses.xlsx"
         facies_df.to_excel(file_name, index=False)
         print(f"Mean log responses of electrofacies saved as '{file_name}'")
 
@@ -558,14 +562,13 @@ def assign_lithofacies(df):
     for index, row in df.iterrows():
         cluster = row['Cluster']
         cal = row['CAL_N']
-        sp = row['SP_N']
         nphi = row['NPHI_N']
         dphi = row['DPHI_N']
         rhob = row['RHOB_N']
         pe = row['PE_N']
-        cgr = row['CGR_N']
+        sgr = row['SGR_N']
 
-        if abs(cal - cal_median) > 0.15 * cal_median or sp < 25:
+        if abs(cal - cal_median) > 0.15 * cal_median:
             df.loc[index, 'Lithofacies'] = 99  # 'Anomaly'
         elif nphi < 0.02 and dphi < 0.01 and rhob > 2.7 and pe > 4:
             df.loc[index, 'Lithofacies'] = 9  # 'Anhydrite'
@@ -577,13 +580,13 @@ def assign_lithofacies(df):
             df.loc[index, 'Lithofacies'] = 6  # 'Limestone'
         elif rhob < 2.7 and pe < 2.8 and nphi > 0.20 and dphi > 0.15:
             df.loc[index, 'Lithofacies'] = 1  # 'Sandstone'
-        elif 3 > pe > 2.7 and cgr > 60:
+        elif 3 > pe > 2.7 and sgr > 60:
             df.loc[index, 'Lithofacies'] = 3  # 'Silty Shale'
-        elif 3 > pe > 2.7 and cgr < 60:
+        elif 3 > pe > 2.7 and sgr < 60:
             df.loc[index, 'Lithofacies'] = 2  # 'Shaly Sandstone'
-        elif pe > 3 and cgr > 80:
+        elif pe > 3 and sgr > 80:
             df.loc[index, 'Lithofacies'] = 5  # 'Black Shale'
-        elif pe > 3 and cgr > 60:
+        elif pe > 3 and sgr > 60:
             df.loc[index, 'Lithofacies'] = 4  # 'Shale'
         else:
             df.loc[index, 'Lithofacies'] = 98  # 'Else'

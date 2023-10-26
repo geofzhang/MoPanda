@@ -17,37 +17,38 @@ class CMRPermeabilityApp(tk.Frame):
 
     def setup_gui(self):
         control_frame = tk.Frame(self)
-        control_frame.pack(pady=20)
+        control_frame.grid(row=0, column=0, padx=10, pady=10)
 
         self.file_path_entry = tk.Entry(self, width=50)
-        self.file_path_entry.pack(pady=10)
+        self.file_path_entry.grid(row=1, column=0, padx=10, pady=10)
 
         self.equations_frame = tk.Frame(self)
-        self.equations_frame.pack(pady=20)
+        self.equations_frame.grid(row=2, column=0, padx=10, pady=10)
 
         open_btn = tk.Button(control_frame, text="Open Excel File",
                              command=lambda: self.browse_excel_file())
-        open_btn.pack(side=tk.LEFT, padx=10)
+        open_btn.grid(row=0, column=0, padx=10)
 
         format_label = tk.Label(control_frame, text="Format", bg="lightgray")
         format_label.bind("<Enter>", self.show_format_table)
-        format_label.pack(side=tk.LEFT, padx=10)
+        format_label.grid(row=0, column=1, padx=10)
 
         self.fitting_method = tk.StringVar(value='Absolute Residual')
         self.fitting_method.trace_add('write', self.update_weight_visibility)
 
         # Adding Combobox for selecting the fitting method
-        ttk.Label(self, text="Fitting Method:").pack(pady=(20, 0))
+        ttk.Label(self, text="Fitting Method:").grid(row=1, column=1, padx=10, pady=10)
         fitting_method_dropdown = ttk.Combobox(self, textvariable=self.fitting_method,
-                                               values=['Absolute Residual', 'Log Transformation', 'Weighted', 'Error Normalization'])
-        fitting_method_dropdown.pack(pady=(0, 10))
+                                               values=['Absolute Residual', 'Log Transformation', 'Weighted',
+                                                       'Error Normalization'])
+        fitting_method_dropdown.grid(row=1, column=2, padx=10, pady=10)
 
         self.weight_config_frame = tk.Frame(self)
-        self.weight_config_frame.pack(pady=10)
+        self.weight_config_frame.grid(row=2, column=1, columnspan=2, padx=10, pady=10)
 
-        self.weight_config_frame.pack_forget()
+        self.weight_config_frame.grid_forget()
 
-        threshold_label = tk.Label(self.weight_config_frame, text="Threshold:")
+        threshold_label = tk.Label(self.weight_config_frame, text="Permeability Threshold (mD):")
         threshold_label.grid(row=0, column=0)
         self.threshold_spinbox = tk.Spinbox(self.weight_config_frame, from_=0, to=10000, increment=10, width=5)
         self.threshold_spinbox.grid(row=0, column=1)
@@ -71,20 +72,25 @@ class CMRPermeabilityApp(tk.Frame):
         self.above_spinbox.insert(0, "0.5")  # Default value
 
         self.apply_btn = tk.Button(self, text="Fit Curve", command=self.reprocess_file)
-        self.apply_btn.pack(pady=10)
+        self.apply_btn.grid(row=3, column=0, padx=10, pady=10)
 
     def update_weight_visibility(self, *args):
         method = self.fitting_method.get()
         if method == 'Weighted':
-            self.weight_config_frame.pack(pady=10)
+            self.weight_config_frame.grid(row=2, column=1, columnspan=2, padx=10, pady=10)
         else:
-            self.weight_config_frame.pack_forget()
+            self.weight_config_frame.grid_forget()
 
     def show_format_table(self, event):
         format_win = tk.Toplevel(self)
         format_win.title("Format Requirements")
 
-        lbl = tk.Label(format_win, text="Here is an example of the format requirement for the excel file.")
+        lbl = tk.Label(format_win, text="Here is an example of the format requirement for the excel file.\n"
+                                        "DEPT is Measured Depth in ft;\n"
+                                        "BVI is the Irreducible Water in fractional;\n"
+                                        "FFI is the Free Water in fractional;\n"
+                                        "T2LM is the log-mean T2 in ms;\n"
+                                        "K_CORE is the core measured specific permeability to brine(or air) in mD.")
         lbl.pack(pady=10)
 
         table = tk.Frame(format_win)
@@ -152,13 +158,13 @@ class CMRPermeabilityApp(tk.Frame):
         for widget in container_frame.winfo_children():
             widget.destroy()  # Clear previously displayed equations if any.
 
-        fig, axs = plt.subplots(2, 1, figsize=(4, 2))
+        fig, axs = plt.subplots(2, 1, figsize=(3, 1.5))
 
         coates_text = f"$K_{{Timur-Coates}} = {coates_params[0]:.2f} \cdot \Phi^{{{coates_params[1]:.2f}}} \cdot (\dfrac{{FFI}}{{BVI}})^{{{coates_params[2]:.2f}}}$"
         sdr_text = f"$K_{{SDR}} = {sdr_params[0]:.2f} \cdot {{T_{{2LM}}}}^{{{sdr_params[1]:.2f}}} \cdot \Phi^{{{sdr_params[2]:.2f}}}$"
 
-        axs[0].text(0.5, 0.5, coates_text, size=12, ha='center', va='center')
-        axs[1].text(0.5, 0.5, sdr_text, size=12, ha='center', va='center')
+        axs[0].text(0.5, 0.5, coates_text, size=10, ha='center', va='center')
+        axs[1].text(0.5, 0.5, sdr_text, size=10, ha='center', va='center')
 
         for ax in axs:
             ax.axis('off')
@@ -238,5 +244,5 @@ class CMRPermeabilityApp(tk.Frame):
 if __name__ == "__main__":
     root = tk.Tk()
     app_frame = CMRPermeabilityApp(master=root)
-    app_frame.pack(pady=20, padx=20)
+    app_frame.pack(pady=10, padx=10)
     root.mainloop()

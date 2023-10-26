@@ -48,7 +48,7 @@ def create_main_gui():
 
     # Main application window
     app = tk.Tk()
-    app.title("Main GUI")
+    app.title("MoPanda - Modular Petrophysics and Data Analysis Tool")
 
     # Set the window size
     app.geometry("800x800")
@@ -129,11 +129,11 @@ def create_main_gui():
     pp_tab = ttk.Frame(tab_control)
     tab_control.add(pp_tab, text="Petrophysics")
 
-    # --- Log Predictor section ---
+    # --- Log Calculator section ---
     ttk.Label(pp_tab, text="Log Calculator and Viewer", font=label_font).pack(anchor=tk.W, padx=10, pady=5)
     add_separator(pp_tab)
     log_calculator_frame = ttk.Frame(pp_tab)
-    log_calculator_frame.pack(fill="both", padx=20, pady=20)
+    log_calculator_frame.pack(fill="both", padx=10, pady=5)
     # Embed LogCalculator into the Petrophysics tab
     from modules.log_calculator import LogCalculator
     LogCalculator(log_calculator_frame)
@@ -143,9 +143,18 @@ def create_main_gui():
     ttk.Label(pp_tab, text="CMR", font=label_font).pack(anchor=tk.W, padx=10, pady=5)
     add_separator(pp_tab)
 
+    # === Geomechanics Tab ===
+    gm_tab = ttk.Frame(tab_control)
+    tab_control.add(gm_tab, text="Geomechanics")
+
+    # --- Log Predictor section ---
+    ttk.Label(gm_tab, text="Stress", font=label_font).pack(anchor=tk.W, padx=10, pady=5)
+    add_separator(gm_tab)
+
     # === Regional Analysis Tab ===
     ra_tab = ttk.Frame(tab_control)
     tab_control.add(ra_tab, text="Regional Analysis")
+
     # Scoping Viewer
     open_viewer_button = tk.Button(ra_tab, text="Open Scoping Module", command=open_scoping_tab)
     open_viewer_button.pack(pady=20)

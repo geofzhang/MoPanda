@@ -81,12 +81,13 @@ class LogViewer(object):
             template_xml_path = os.path.join(file_dir, '../data/template',
                                              file_name)
 
-        elif template_xml_path is not None and \
-                template_defaults is None:
-            template_xml_path = template_xml_path
+        # elif template_xml_path is not None and \
+        #         template_defaults is None:
         else:
-            raise ValueError("template_xml_path and template_defaults \
-                              cannot be specified at the same time.")
+            template_xml_path = template_xml_path
+        # else:
+        #     raise ValueError("template_xml_path and template_defaults \
+        #                       cannot be specified at the same time.")
 
         with open(template_xml_path, 'r') as f:
             root = ET.fromstring(f.read())

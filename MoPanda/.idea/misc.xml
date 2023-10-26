@@ -3,7 +3,7 @@
   <component name="Black">
     <option name="executionMode" value="BINARY" />
     <option name="pathToExecutable" value="D:\program\anaconda3\Scripts\black.exe" />
-    <option name="sdkUUID" value="e86f2ceb-e49c-4c6b-a5bf-8a7636ae45e1" />
+    <option name="sdkName" value="denova" />
   </component>
-  <component name="ProjectRootManager" version="2" project-jdk-name="Python 3.10 (mopanda)" project-jdk-type="Python SDK" />
+  <component name="ProjectRootManager" version="2" project-jdk-name="denova" project-jdk-type="Python SDK" />
 </project>

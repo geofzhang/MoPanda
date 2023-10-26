@@ -1,32 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <graph>
-    <formation name="SKULL_CREEK_SH" color="#003f5c">
+    <formation name="SkullCreek_Sh" color="#003f5c">
     </formation>
-    <formation name="LAKOTA_UPPER" color="#97c080">
+    <formation name="Lakota_U" color="#97c080">
     </formation>
-    <formation name="LAKOTA_LOWER" color="#58508d">
+    <formation name="Lakota_L" color="#58508d">
     </formation>
-    <formation name="MORRISON" color="#c08097">
+    <formation name="Morrison" color="#c08097">
     </formation>
-    <formation name="DAYCREEK" color="#8097c0">
+    <formation name="Jurassic_L" color="#8097c0">
     </formation>
-    <formation name="FLOWERPOT_SH" color="#805300">
+    <formation name="Flowerpot_Sh" color="#805300">
     </formation>
-    <formation name="LYONS" color="#ffba00" alpha="0.5">
+    <formation name="Flowerpot_Anhy" color="#c0a980">
     </formation>
-    <formation name="SUMNER_SATANKA" color="#ff6361">
+    <formation name="Lyons" color="#ffba00" alpha="0.5">
     </formation>
-    <formation name="STONE_CORRAL" color="#c0a980">
+    <formation name="SaltPlain" color="#ff6361">
+    </formation>
+    <formation name="StoneCorral" color="#c0a980">
     </formation>
     <track display_name="GAMMA RAY" width="1.5" major_lines="3">
         <curve display_name="CAL" curve_name="CAL_N" color="#FF0000" left="20" right="0"/>
-        <curve display_name="CGR" curve_name="CGR_N" color="#006400" left="200" right="0" fill="right"
+        <curve display_name="SGR" curve_name="SGR_N" color="#006400" left="200" right="0" fill="right"
                fill_color_map="Greens" left_color_value="100"/>
     </track>
     <track display_name="DEPTH" number_spacing="50" tick_spacing="10" line_spacing="50" width="0.75">
     </track>
     <track display_name="RESISTIVITY" scale="log" width="2">
-        <curve display_name="RESMED" curve_name="RESMED_N" color="#cc0000" left="2" right="2100"/>
+        <curve display_name="RESSHAL" curve_name="RESSHAL_N" color="#cc0000" left="2" right="2100"/>
         <curve display_name="RESDEEP" curve_name="RESDEEP_N" color="#330000" left="2" right="2100"
                right_cutoff_fill="20" right_cutoff_fill_color="#ff9994"/>
     </track>

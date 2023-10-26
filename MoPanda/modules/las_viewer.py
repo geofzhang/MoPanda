@@ -125,8 +125,8 @@ class WellLogGUI(tk.Toplevel):
     def display_well(self):
         selected_file_name = self.selected_file_var.get()
         for las_file in self.las_files:
-            if las_file.filename == selected_file_name:  # Use the filename attribute
-                well_info = str(las_file.well)  # Replace with the appropriate method in LasIO
+            if las_file.filename == selected_file_name:
+                well_info = str(las_file.well)
                 self.text_well.delete("1.0", tk.END)
                 self.text_well.insert(tk.END, well_info)
                 self.update()
@@ -135,8 +135,8 @@ class WellLogGUI(tk.Toplevel):
     def display_params(self):
         selected_file_name = self.selected_file_var.get()
         for las_file in self.las_files:
-            if las_file.filename == selected_file_name:  # Use the filename attribute
-                params_info = str(las_file.params)  # Replace with the appropriate method in LasIO
+            if las_file.filename == selected_file_name:
+                params_info = str(las_file.params)
                 self.text_well.delete("1.0", tk.END)
                 self.text_well.insert(tk.END, params_info)
                 self.update()
@@ -145,8 +145,8 @@ class WellLogGUI(tk.Toplevel):
     def display_curves(self):
         selected_file_name = self.selected_file_var.get()
         for las_file in self.las_files:
-            if las_file.filename == selected_file_name:  # Use the filename attribute
-                curves_info = str(las_file.curves)  # Replace with the appropriate method in LasIO
+            if las_file.filename == selected_file_name:
+                curves_info = str(las_file.curves)
                 self.text_well.delete("1.0", tk.END)
                 self.text_well.insert(tk.END, curves_info)
                 self.update()
@@ -154,7 +154,7 @@ class WellLogGUI(tk.Toplevel):
 
     def select_output_path(self):
         self.output_path = filedialog.askdirectory()
-        self.output_text.delete("1.0", tk.END)  # Clear existing text
+        self.output_text.delete("1.0", tk.END)
         self.output_text.insert(tk.END, self.output_path)
 
     def export_data(self):
