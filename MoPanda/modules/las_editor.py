@@ -1,12 +1,10 @@
 import sys
 import os
-from functools import partial
-
 import lasio
 import json
+import csv
 import pandas as pd
 import pyqtgraph as pg
-from PyQt6 import QtGui, QtCore
 from PyQt6.QtCore import Qt, QRect
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QTableWidget, QTableWidgetItem, QGridLayout, QVBoxLayout,
                              QHBoxLayout, QSpinBox, QDoubleSpinBox, QCheckBox, QColorDialog, QGraphicsPathItem,
@@ -19,7 +17,6 @@ import matplotlib.pyplot as plt
 import math
 from pyqtgraph import BusyCursor
 import matplotlib.cm
-import csv
 from datetime import datetime
 
 ## Switch to using white background and black foreground
