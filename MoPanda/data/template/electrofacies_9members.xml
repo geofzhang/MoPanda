@@ -21,8 +21,8 @@
     <formation name="StoneCorral" color="#c0a980">
     </formation>
     <track display_name="GAMMA RAY" width="1.5" major_lines="3">
-        <curve display_name="CAL" curve_name="CAL_N" color="#FF0000" left="0" right="20" />
-        <curve display_name="SGR" curve_name="SGR_N" color="#008000" left="0" right="200" fill="right" fill_color_map="copper" left_color_value="0" right_color_value="100" />
+        <curve display_name="CAL" curve_name="CAL_N" color="#FF0000" left="20" right="0" />
+        <curve display_name="SGR" curve_name="SGR_N" color="#006400" left="200" right="0" fill="right" fill_color_map="Greens" left_color_value="100" />
     </track>
     <track display_name="DEPTH" number_spacing="50" tick_spacing="10" line_spacing="50" width="0.75">
     </track>
@@ -30,20 +30,10 @@
         <curve display_name="RESSHAL" curve_name="RESSHAL_N" color="#cc0000" left="2" right="2100" />
         <curve display_name="RESDEEP" curve_name="RESDEEP_N" color="#330000" left="2" right="2100" right_cutoff_fill="20" right_cutoff_fill_color="#ff9994" />
     </track>
-    <track display_name="PE" width="1" major_lines="9">
-        <curve display_name="PE" curve_name="PE_N" color="#000000" left="0" right="10" />
+    <track display_name="NEUTRON DENSITY" width="2" major_lines="9">
+        <curve display_name="PE" curve_name="PE_N" color="#000000" left="0" right="10" right_cutoff_fill="3" right_cutoff_fill_color="#cde7f0" left_cutoff_fill="3" left_cutoff_fill_color="#ffff99" />
         <curve display_name="RHOB" curve_name="RHOB_N" color="#FF0000" left="1.95" right="2.95" />
-    </track>
-    <track display_name="POROSITY" width="2" major_lines="9">
-        <curve display_name="POROSITY" curve_name="PHIE" color="#2490ef" left="0.60" right="-0.10" />
-        <curve display_name="DPHI" curve_name="DPHI_N" color="#878a8c" left="0.60" right="-0.10" line_style="--" />
-        <curve display_name="NPHI" curve_name="NPHI_N" color="#161717" left="0.60" right="-0.10" line_style="--" />
-    </track>
-    <track display_name="SALINITY" width="1" major_lines="9">
-        <curve display_name="SALINITY" curve_name="SALINITY" color="#330000" left="0" right="50000" left_cutoff_fill="10000" left_cutoff_fill_color="#cde7f0" right_cutoff_fill="10000" right_cutoff_fill_color="#ff9994" />
-    </track>
-    <track display_name="FACIES" width="1" major_lines="1">
-        <curve display_name="KMEANS" curve_name="FACIES_KMEANS" color="#000000" left="0" right="1" fill="left" fill_color_map="Paired" left_color_value="1" right_color_value="8" />
+        <curve display_name="NPHI" curve_name="NPHI_N" color="#0099CC" left="0.75" right="-0.10" line_style="--" />
     </track>
 <track display_name="FUZZY MEMBERSHIP" width="2" left="0" right="1" major_lines="9" cumulative="True">
   <curve display_name="MEM0" curve_name="FACIES_FUZZY_MEMBER_1" fill_color="#a6cee3" />

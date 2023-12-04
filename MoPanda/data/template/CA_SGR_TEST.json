@@ -1,0 +1,55 @@
+{
+    "GAMMA RAY": {
+        "track_display_name": "GAMMA RAY",
+        "scale": "normal",
+        "track_width": 1.0,
+        "major_line_width": 3.0,
+        "curves": {
+            "SGR_N": {
+                "display_name": "SGR_N",
+                "line_color": "#aaaa00",
+                "line_alpha": 255,
+                "line_style": "Solid",
+                "fill_color_palette": "copper",
+                "filling_side": "Right",
+                "min_val": 0.0,
+                "max_val": 200.0,
+                "reverse": true,
+                "left_cut_off": 0.0,
+                "left_cut_off_color": "#cde7f0",
+                "left_cut_off_alpha": 0,
+                "right_cut_off": 0.0,
+                "right_cut_off_color": "#ff9994",
+                "right_cut_off_alpha": 0
+            }
+        }
+    },
+    "DEPTH": {
+        "track_display_name": "DEPTH",
+        "scale": "normal",
+        "track_width": 1.0,
+        "major_line_width": 3.0,
+        "number_spacing": 50.0,
+        "tick_spacing": 10.0,
+        "line_spacing": 50.0,
+        "curves": {
+            "DEPT": {
+                "display_name": "DEPT",
+                "line_color": "#000000",
+                "line_alpha": 255,
+                "line_style": "Solid",
+                "fill_color_palette": "viridis",
+                "filling_side": "None",
+                "min_val": 0.0,
+                "max_val": 1.0,
+                "reverse": false,
+                "left_cut_off": 0.0,
+                "left_cut_off_color": "#cde7f0",
+                "left_cut_off_alpha": 0,
+                "right_cut_off": 0.0,
+                "right_cut_off_color": "#ff9994",
+                "right_cut_off_alpha": 0
+            }
+        }
+    }
+}

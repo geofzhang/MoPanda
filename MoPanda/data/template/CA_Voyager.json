@@ -1,0 +1,206 @@
+{
+    "GAMMA RAY": {
+        "track_display_name": "GAMMA",
+        "scale": "normal",
+        "track_width": 1.5,
+        "major_line_width": 2.0,
+        "curves": {
+            "SGR_N": {
+                "display_name": "SGR_N",
+                "line_color": "#008000",
+                "line_alpha": 200,
+                "line_style": "Solid",
+                "fill_color_palette": "copper",
+                "filling_side": "Right",
+                "min_val": 0.0,
+                "max_val": 200.0,
+                "reverse": true,
+                "left_cut_off": 0.0,
+                "left_cut_off_color": "#cde7f0",
+                "left_cut_off_alpha": 0,
+                "right_cut_off": 0.0,
+                "right_cut_off_color": "#ff9994",
+                "right_cut_off_alpha": 0
+            }
+        }
+    },
+    "DEPTH": {
+        "track_display_name": "DEPTH",
+        "scale": "normal",
+        "track_width": 0.75,
+        "major_line_width": 12.0,
+        "number_spacing": 50.0,
+        "tick_spacing": 10.0,
+        "line_spacing": 50.0,
+        "curves": {
+            "DEPT": {
+                "display_name": "DEPT",
+                "line_color": "#000000",
+                "line_alpha": 255,
+                "line_style": "Solid",
+                "fill_color_palette": "viridis",
+                "filling_side": "None",
+                "min_val": 0.0,
+                "max_val": 1.0,
+                "reverse": false,
+                "left_cut_off": 0.0,
+                "left_cut_off_color": "#cde7f0",
+                "left_cut_off_alpha": 0,
+                "right_cut_off": 0.0,
+                "right_cut_off_color": "#ff9994",
+                "right_cut_off_alpha": 0
+            }
+        }
+    },
+    "RESISTIVITY": {
+        "track_display_name": "RESISTIVITY",
+        "scale": "log scale",
+        "track_width": 1.5,
+        "major_line_width": 2.0,
+        "curves": {
+            "RESDEEP_N": {
+                "display_name": "RESDEEP_N",
+                "line_color": "#000000",
+                "line_alpha": 255,
+                "line_style": "Solid",
+                "fill_color_palette": "viridis",
+                "filling_side": "None",
+                "min_val": 0.1,
+                "max_val": 1500.0,
+                "reverse": false,
+                "left_cut_off": 10.0,
+                "left_cut_off_color": "#ff9994",
+                "left_cut_off_alpha": 255,
+                "right_cut_off": 0.0,
+                "right_cut_off_color": "#ff9994",
+                "right_cut_off_alpha": 0
+            }
+        }
+    },
+    "PE": {
+        "track_display_name": "PE",
+        "scale": "normal",
+        "track_width": 1.0,
+        "major_line_width": 2.0,
+        "curves": {
+            "RHOB_N": {
+                "display_name": "RHOB_N",
+                "line_color": "#ff0000",
+                "line_alpha": 200,
+                "line_style": "Solid",
+                "fill_color_palette": "viridis",
+                "filling_side": "None",
+                "min_val": 1.8,
+                "max_val": 3.0,
+                "reverse": false,
+                "left_cut_off": 0.0,
+                "left_cut_off_color": "#cde7f0",
+                "left_cut_off_alpha": 0,
+                "right_cut_off": 0.0,
+                "right_cut_off_color": "#ff9994",
+                "right_cut_off_alpha": 0
+            },
+            "PE_N": {
+                "display_name": "PE_N",
+                "line_color": "#5555ff",
+                "line_alpha": 195,
+                "line_style": "Solid",
+                "fill_color_palette": "viridis",
+                "filling_side": "None",
+                "min_val": 0.0,
+                "max_val": 10.0,
+                "reverse": false,
+                "left_cut_off": 0.0,
+                "left_cut_off_color": "#cde7f0",
+                "left_cut_off_alpha": 0,
+                "right_cut_off": 0.0,
+                "right_cut_off_color": "#ff9994",
+                "right_cut_off_alpha": 0
+            }
+        }
+    },
+    "POROSITY": {
+        "track_display_name": "POROSITY",
+        "scale": "normal",
+        "track_width": 1.5,
+        "major_line_width": 2.0,
+        "curves": {
+            "PHIE": {
+                "display_name": "PHIE",
+                "line_color": "#2490ef",
+                "line_alpha": 255,
+                "line_style": "Solid",
+                "fill_color_palette": "viridis",
+                "filling_side": "None",
+                "min_val": -0.1,
+                "max_val": 0.6,
+                "reverse": true,
+                "left_cut_off": 0.0,
+                "left_cut_off_color": "#cde7f0",
+                "left_cut_off_alpha": 0,
+                "right_cut_off": 0.0,
+                "right_cut_off_color": "#ff9994",
+                "right_cut_off_alpha": 0
+            },
+            "DPHI_N": {
+                "display_name": "DPHI_N",
+                "line_color": "#878a8c",
+                "line_alpha": 150,
+                "line_style": "Dash",
+                "fill_color_palette": "viridis",
+                "filling_side": "None",
+                "min_val": -0.1,
+                "max_val": 0.6,
+                "reverse": true,
+                "left_cut_off": 0.0,
+                "left_cut_off_color": "#cde7f0",
+                "left_cut_off_alpha": 0,
+                "right_cut_off": 0.0,
+                "right_cut_off_color": "#ff9994",
+                "right_cut_off_alpha": 0
+            },
+            "NPHI_N": {
+                "display_name": "NPHI_N",
+                "line_color": "#161717",
+                "line_alpha": 150,
+                "line_style": "Dash-Dot",
+                "fill_color_palette": "viridis",
+                "filling_side": "None",
+                "min_val": -0.1,
+                "max_val": 0.6,
+                "reverse": true,
+                "left_cut_off": 0.0,
+                "left_cut_off_color": "#cde7f0",
+                "left_cut_off_alpha": 0,
+                "right_cut_off": 0.0,
+                "right_cut_off_color": "#ff9994",
+                "right_cut_off_alpha": 0
+            }
+        }
+    },
+    "SALINITY": {
+        "track_display_name": "SALINITY",
+        "scale": "normal",
+        "track_width": 1.0,
+        "major_line_width": 2.0,
+        "curves": {
+            "SALINITY": {
+                "display_name": "SALINITY",
+                "line_color": "#ffdd60",
+                "line_alpha": 200,
+                "line_style": "Solid",
+                "fill_color_palette": "viridis",
+                "filling_side": "None",
+                "min_val": 0.0,
+                "max_val": 50000.0,
+                "reverse": false,
+                "left_cut_off": 0.0,
+                "left_cut_off_color": "#cde7f0",
+                "left_cut_off_alpha": 255,
+                "right_cut_off": 10000.0,
+                "right_cut_off_color": "#ff9994",
+                "right_cut_off_alpha": 255
+            }
+        }
+    }
+}

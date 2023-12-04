@@ -18,6 +18,7 @@ import json
 class LogCalculator(tk.Frame):
     def __init__(self, master=None):
         super().__init__(master)
+        self.assign_lithofacies = None
         self.form_checkboxes = None
         self.clustering_params = None
         self.cluster_range = None
@@ -126,6 +127,13 @@ class LogCalculator(tk.Frame):
                                                         command=self.open_electrofacies_config_window,
                                                         state=tk.DISABLED)
         self.configure_electrofacies_button.grid(row=9, column=1, padx=10, pady=5)
+
+        # Lithofacies Checkbox
+        self.assign_lithofacies = tk.BooleanVar()
+        self.assign_lithofacies_checkbox = tk.Checkbutton(self, text="Auto-assign Lithofacies",
+                                                          variable=self.assign_lithofacies,
+                                                          state=tk.DISABLED)
+        self.assign_lithofacies_checkbox.grid(row=9, column=2, columnspan=1, padx=10, pady=5)
 
         # Output Separator
         ttk.Separator(self, orient="horizontal").grid(row=10, column=0, columnspan=4, sticky="ew", padx=10, pady=5)
@@ -496,8 +504,10 @@ class LogCalculator(tk.Frame):
         # Enable or disable the "Configure Parameters" button based on the "Calculate Electrofacies" checkbox state
         if self.calculate_electrofacies.get():
             self.configure_electrofacies_button.config(state=tk.NORMAL)
+            self.assign_lithofacies_checkbox.config(state=tk.NORMAL)
         else:
             self.configure_electrofacies_button.config(state=tk.DISABLED)
+            self.assign_lithofacies_checkbox.config(state=tk.DISABLED)
 
     def toggle_output_files_checkbox(self):
         # Check the state of the checkbox
@@ -612,7 +622,8 @@ class LogCalculator(tk.Frame):
                                                template=xml_template,
                                                template_xml_path=self.template_xml_path,
                                                lithology_color_coding=self.lithology_color_coding,
-                                               masking=masking)
+                                               masking=masking,
+                                               assign_lithofacies_check=self.assign_lithofacies)
 
         # find way to name well, looking for well name#
         # or UWI or API #

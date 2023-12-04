@@ -14,7 +14,7 @@ from keras.optimizers import Adam
 from keras_self_attention import SeqSelfAttention
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from scipy.stats import pearsonr
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, RobustScaler
 from sklearn.model_selection import train_test_split
 from datetime import datetime
 from sklearn.utils import resample
@@ -61,15 +61,16 @@ def impute_data(df, selected_logs, logs_to_log_transform):
     while df[selected_logs].iloc[-1].isin(unwanted_values).any():
         df = df.iloc[:-1]
 
-    # Reset index without dropping it, so the original indices are preserved as a new column
+    # Reset index without dropping it
     df = df.reset_index(drop=False).rename(columns={"index": "original_index"})
 
-    # Interpolate for the remaining NaN values
-    df = df.interpolate()
+    df.replace([np.inf, -np.inf, -999.17, -999.25], np.nan, inplace=True)
 
-    # If any NaN remains (for example, if NaN values are still at the very beginning or end),
-    # fill those with 0
-    df = df.fillna(0)
+    # Interpolate for the remaining NaN values
+    df.interpolate(method="polynomial", order=2, inplace=True)
+
+    # If any NaN remains, fill those with 0
+    df.fillna(0, inplace=True)
 
     # Apply log transformation to specific columns
     for col in logs_to_log_transform:
@@ -81,15 +82,19 @@ def impute_data(df, selected_logs, logs_to_log_transform):
         if log in df.columns:
             df[log] = np.log10(df[log])
 
+    # Check if any value in the DataFrame is infinity or too large
+    if np.any(np.isinf(df)) or np.any(df > np.finfo(np.float64).max):
+        raise ValueError("Data still contains infinity or values too large after imputation.")
+
     return df
 
 
 def normalize_data(df, scaler=None):
     """
-    Normalize data columns between 0 and 1.
-    If scaler is provided (e.g., for unnormalizing), use them.
-    Otherwise, fit new scaler.
-    Returns normalized dataframe and the scaler.
+    Normalize data columns using RobustScaler.
+    If a scaler is provided (e.g., for unnormalizing), use it.
+    Otherwise, fit a new scaler.
+    Returns the normalized dataframe and the scaler.
     """
     if scaler is None:
         scaler = {}
@@ -100,7 +105,8 @@ def normalize_data(df, scaler=None):
 
     for col in columns_to_normalize:
         if col not in scaler:
-            scaler[col] = MinMaxScaler(feature_range=(0, 1))
+            scaler[col] = RobustScaler()
+            # scaler[col] = MinMaxScaler()
             df_copy.loc[:, col] = scaler[col].fit_transform(df_copy[col].values.reshape(-1, 1))
         else:
             df_copy.loc[:, col] = scaler[col].transform(df_copy[col].values.reshape(-1, 1))
@@ -260,8 +266,8 @@ class CrossWellPredictor(tk.Tk):
 
         # Define logs to log-transform
         self.logs_to_log_transform = ['RESDEEP_N', 'K_SDR_N', 'K_GD_N', 'K_TIM_N', 'K_SDR', 'K_SDR_PRE', 'RESD_D',
-                                      'RESS_D', 'RESSHAL_N']
-        self.logs_to_postprocess = ['K_SDR_N', 'K_GD_N', 'K_TIM_N', 'K_SDR', 'K_SDR_PRE']
+                                      'RESS_D', 'RESSHAL_N', 'K', 'PERM']
+        self.logs_to_postprocess = ['K_SDR_N', 'K_GD_N', 'K_TIM_N', 'K_SDR', 'K_SDR_PRE', 'K']
         self.pe_logs = ['PEF_D', 'PE_N', 'PEF_N']
         # Attributes to save the selected logs
         self.selected_x_logs = []
@@ -599,9 +605,12 @@ class CrossWellPredictor(tk.Tk):
                                sorted(correlations.items(), key=lambda item: abs(item[1]), reverse=True)}
 
         # Display or store the sorted correlations
-        print("Correlation coefficients with the target log:")
+        self.progress_text.insert(tk.END, "Correlation coefficients with the target log:")
         for log, correlation in sorted_correlations.items():
             print(f"{log}: {correlation:.2f}")
+            msg = f"{log}: {correlation:.2f}\n"
+            self.progress_text.insert(tk.END, msg)
+            self.progress_text.see(tk.END)
 
     def build_model(self, input_shape, lstm_units=200, learning_rate=0.01, dropout_rate=0.2):
         model = Sequential()
@@ -611,8 +620,6 @@ class CrossWellPredictor(tk.Tk):
             # Add 1D Convolutional layers
             model.add(Conv1D(64, kernel_size=1, activation='relu', input_shape=input_shape))
             model.add(MaxPooling1D(pool_size=1))
-            # model.add(Conv1D(128, kernel_size=3, activation='relu'))
-            # model.add(MaxPooling1D(pool_size=2))
 
             # First LSTM layer with Bidirectional wrapper and tanh activation
             model.add(Bidirectional(LSTM(lstm_units, return_sequences=True, activation='tanh')))
@@ -671,8 +678,20 @@ class CrossWellPredictor(tk.Tk):
             callbacks=[LambdaCallback(on_epoch_end=self.on_epoch_end),
                        loss_history_callback,
                        early_stopping,
-                       model_checkpoint]
+                       ]
         )
+
+        # # Train the model with early stopping and model checkpoint
+        # history = self.model.fit(
+        #     X_train, Y_train,
+        #     epochs=500,
+        #     batch_size=64,
+        #     validation_data=(X_test, Y_test),  # Validation set
+        #     callbacks=[LambdaCallback(on_epoch_end=self.on_epoch_end),
+        #                loss_history_callback,
+        #                early_stopping,
+        #                model_checkpoint]
+        # )
 
         self.progress_text.insert(tk.END, "Training complete!\n")
 

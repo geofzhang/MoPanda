@@ -11,7 +11,7 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn.linear_model import Ridge
 from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
-
+import lasio
 
 class InWellPredictor:
     def __init__(self, log=None):
@@ -108,7 +108,7 @@ class InWellPredictor:
         """
         Loads a dataframe based on user's file selection.
         """
-        self.filename = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv"), ("Excel files", "*.xlsx")])
+        self.filename = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv"), ("Excel files", "*.xlsx"), ("LAS files", "*.las")])
         if self.filename:
             try:
                 if self.filename.endswith('.csv'):
@@ -118,6 +118,9 @@ class InWellPredictor:
                         messagebox.showerror("Error", "The .xlsx file does not have a 'Curves' sheet.")
                         return
                     self.dataframe = pd.read_excel(self.filename, sheet_name='Curves', index_col=0)
+                elif self.filename.endswith('.las'):
+                    las = lasio.read(self.filename)
+                    self.dataframe = las.df()
                 # Update the selected file entry with the file path
                 self.selected_file_entry.delete(0, tk.END)
                 self.selected_file_entry.insert(0, self.filename)
@@ -125,28 +128,6 @@ class InWellPredictor:
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to load file: {e}")
 
-    def write_predictions_to_excel(self, predictions, column_name):
-        """
-        Write the predictions back to the original Excel file.
-        """
-        try:
-            # Read the original Excel file
-            xls = pd.ExcelFile(self.filename)
-            writer = pd.ExcelWriter(self.filename, engine='xlsxwriter')
-
-            # Loop through all sheets and write them back
-            for sheet_name in xls.sheet_names:
-                if sheet_name == 'Curves':
-                    # Update the dataframe with the new predictions
-                    self.dataframe[column_name] = predictions
-                    self.dataframe.to_excel(writer, sheet_name=sheet_name, index=True)
-                else:
-                    sheet_df = pd.read_excel(xls, sheet_name=sheet_name)
-                    sheet_df.to_excel(writer, sheet_name=sheet_name, index=False)
-
-            writer.save()
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to write to file: {e}")
 
     def select_logs(self):
         """
@@ -302,7 +283,7 @@ class InWellPredictor:
             ].copy()  # Make a copy of the DataFrame
 
         # Replace infinite values (inf) with NaN
-        df_train.replace([np.inf, -np.inf], np.nan, inplace=True)
+        df_train.replace([-999.25, 999.25, -999.75, 999.75, np.inf, -np.inf], np.nan, inplace=True)
 
         # Drop missing values in the selected logs
         logs_to_dropna = self.logs_to_select + [self.log_to_predict]
@@ -342,9 +323,18 @@ class InWellPredictor:
                 self.dataframe.to_csv(self.filename)
             elif self.filename.endswith('.xlsx'):
                 self.dataframe.to_excel(self.filename, sheet_name='Curves')
+            elif self.filename.endswith('.las'):
+                las = lasio.read(self.filename)
+                # Update the LAS file with the modified DataFrame
+                for column in self.dataframe.columns:
+                    if column in las.keys():
+                        las[column] = self.dataframe[column].values
+                # Write the updated LAS object to a file
+                las.write(self.filename)
             messagebox.showinfo("Success", "Predicted results saved successfully!")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save DataFrame: {e}")
+
 
     def predict_button_click(self):
         """

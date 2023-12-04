@@ -195,9 +195,139 @@ class LasIO(LASFile):
 
     def fluid_properties(self, top=0, bottom=100000, mast=67,
                          temp_grad=0.015, press_grad=0.5, rws=0.1, rwt=70,
-                         rmfs=0.4, rmft=100, gas_grav=0.67, oil_api=38, p_sep=100,
+                         rmfs=0.4, rmft=100, rwa_a=0.62, rwa_m=2.15,
+                         rwa_n=2, gas_grav=0.67, oil_api=38, p_sep=100,
                          t_sep=100, ppc_a=668, yn2=0, yco2=0, yh2s=0, yh20=0, rs=0,
-                         lith_grad=1.03, biot=0.8, pr=0.25, tds='bekeratlas'):
+                         lith_grad=1.03, biot=0.8, pr=0.25, tds='bakeratlas'):
+        """
+        Calculates fluid properties along wellbore.
+
+        The output add the following calculated curves at each depth:
+
+        PORE_PRESS : (psi)
+            Reservoir pore pressure
+        RES_TEMP : (°F)
+            Reservoir temperature
+        NES : (psi)
+            Reservoir net effective stress
+        RW : (ohm.m)
+            Resistivity of water
+        RMF : (ohm.m)
+            Resistivity of mud filtrate
+        RHO_HC : (g / cc)
+            Density of hydrocarbon
+        RHO_W : (g / cc)
+            Density of formation water
+        RHO_MF : (g / cc)
+            Density of mud filtrate
+        NPHI_HC
+            Neutron log response of hydrocarbon
+        NPHI_W
+            Neutron log response of water
+        NPHI_MF
+            Neutron log response of mud filtrate
+        MU_HC : (cP)
+            Viscosity of hydrocarbon
+        Z
+            Compressiblity factor for non-ideal gas.
+            Only output if oil_api = 0
+        CG : (1 / psi)
+            Gas Compressiblity. Only output if oil_api = 0
+        BG
+            Gas formation volume factor. Only output if oil_api = 0
+        BP : (psi)
+            Bubble point. Only output if oil_api > 0
+        BO
+            Oil formation volume factor. Only output if oil_api > 0
+
+        Parameters
+        ----------
+        tds
+        top : float (default 0)
+            The top depth to begin fluid properties calculation. If
+            value is not specified, the calculations will start at
+            the top of the log.
+        bottom : float (default 100,000)
+            The bottom depth to end fluid properties, inclusive. If the
+            value is not specified, the calcuations will go to the
+            end of the log.
+        mast : float (default 67)
+            The mean annual surface temperature at the location of the
+            well in degrees Fahrenheit.
+        temp_grad : float (default 0.015)
+            The temperature gradient of the reservoir in °F / ft.
+        press_grad : float (default 0.5)
+            The pressure gradient of the reservoir in psi / ft.
+        rws : float (default 0.1)
+            The resistivity of water at surface conditions in ohm.m.
+        rwt : float (default 70)
+            The temperature of the rws measurement in °F.
+        rmfs : float (default 0.4)
+            The resistivity of mud filtrate at surface conditions in
+            ohm.m
+        rmft : float (default 100)
+            The temperature of the rmfs measurement in °F
+        rwa_a : float (default 0.62)
+            The A constant of the revised Archie's equation (Humble Equation by default)
+        rwa_m : float (default 2.15)
+            The M constant of the revised Archie's equation (Humble Equation by default)
+        rwa_n : float (default 2.15)
+            The N constant of the revised Archie's equation (Humble Equation by default)
+        gas_grav : float (default 0.67)
+            The specific gravity of the separator gas. Air = 1,
+            CH4 = 0.577
+        oil_api : float (default 38)
+            The api gravity of oil after the separator
+            If fluid system is dry gas, use oil_api = 0.
+        p_sep : float (default 100)
+            The pressure of the separator, assuming a 2 stage system
+            Only used when oil_api is > 0 (not dry gas).
+        t_sep : float
+            The temperature of the separator, assuming a 2 stage system
+            Only used with :code:`oil_api > 0`.
+        yn2 : float (default 0)
+            Molar fraction of nitrogen in gas.
+        yco2 : float (default 0)
+            Molar fraction of carbon dioxide in gas.
+        yh2s : float (default 0)
+            Molar fraction of hydrogen sulfide in gas.
+        yh20 : float (default 0)
+            Molar fraction of water in gas.
+        rs : float (default 0)
+            Solution gas oil ratio at reservoir conditions.
+            If unknwon, use 0 and correlation will be used.
+        lith_grad : float (default 1.03)
+            Lithostatic overburden pressure gradient in psi / ft.
+        biot : float (default 0.8)
+            Biot constant.
+        pr : float (default 0.25)
+            Poisson's ratio
+
+        Note
+        ----
+        Current single phase fluid properties assumes either:
+
+            1. Dry Gas at Reservoir Conditions
+            Methane as hydrocarbon type with options to include N2,
+            CO2, H2S, or H2O. To assume dry_gas, set
+            :code:`oil_api = 0`
+
+            2. Oil at Reservoir Conditions
+            Assumes reservoir fluids are either a black or volatile
+            oil. Separator conditions of gas are used to calculate
+            bubble point and the reservoir fluid properties of the
+            reconstituted oil.
+
+        References
+        ----------
+        Ahmed, Tarek H. Reservoir Engineering Handbook. Oxford: Gulf
+            Professional, 2006.
+
+        Lee, John, and Robert A. Wattenbarger. Gas Reservoir
+            Engineering. Richardson, TX: Henry L. Doherty Memorial
+            Fund of AIME, Society of Petroleum Engineers, 2008.
+        """
+
         # fluid property calculations
 
         # Load depth (ft)/ temperature (F)/ pressure (psi)
@@ -228,7 +358,9 @@ class LasIO(LASFile):
 
         # Calculate
         # effective porosity
-        if 'POR_N' in self.curves and check_valid_data(self['POR_N'], depth_index):
+        if 'PHIE' in self.curves and check_valid_data(self['PHIE'], depth_index):
+            porosity = self['PHIE'][depth_index]
+        elif 'POR_N' in self.curves and check_valid_data(self['POR_N'], depth_index):
             porosity = self['POR_N'][depth_index]
         elif 'TCMR_N' in self.curves and check_valid_data(self['TCMR_N'], depth_index):
             porosity = self['TCMR_N'][depth_index]
@@ -238,8 +370,10 @@ class LasIO(LASFile):
 
             if np.any(nphi > 1):
                 nphi /= 100
+                self['NPHI_N'] = self['NPHI_N']/100
             if np.any(dphi > 1):
                 dphi /= 100
+                self['DPHI_N'] = self['DPHI_N']/100
 
             porosity = ((nphi + dphi) / 2 + np.sqrt((nphi ** 2 + dphi ** 2) / 2)) / 2
         elif 'NPHI_N' in self.curves:
@@ -247,11 +381,15 @@ class LasIO(LASFile):
             if np.any(nphi > 1):
                 nphi /= 100
             porosity = nphi
+            self['NPHI_N'] = self['NPHI_N']/100
+
         elif 'DPHI_N' in self.curves:
             dphi = self['DPHI_N'][depth_index]
             if np.any(dphi > 1):
                 dphi /= 100
             porosity = dphi
+            self['DPHI_N'] = self['DPHI_N']/100
+
         else:
             messagebox.showerror('Error', 'No porosity log is available.')
             return
@@ -262,7 +400,7 @@ class LasIO(LASFile):
         # Load Rwa if log is available
         elif 'RESDEEP_N' in self.curves:
             # Rwa calculation, if not available already
-            rwa = (porosity ** 2.15) * self['RESDEEP_N'][depth_index] / 0.62  # Humble Equation
+            rwa = (porosity ** rwa_m) * self['RESDEEP_N'][depth_index] / rwa_a
         elif 'SP_N' in self.curves:
             # Rwa calculation, if only SP log is available
             ksp = 60 * 0.122 * form_temp
@@ -291,8 +429,9 @@ class LasIO(LASFile):
 
         # Rmfa/Rmca calculation
         if 'RESSHAL_N' in self.curves:
-            rmfa = (porosity ** 2.15) * self['RESSHAL_N'][depth_index] / 0.62  # Humble Equation
+            rmfa = (porosity ** rwa_m) * self['RESSHAL_N'][depth_index] / rwa_n
             rmfa75 = (form_temp + 6.77) / (75 + 6.77) * rmfa
+
         # Rwa at room temperature 75 degree F
         rwa75 = (form_temp + 6.77) / (75 + 6.77) * rwa
 
@@ -305,10 +444,10 @@ class LasIO(LASFile):
         # NaCl equivalent salinity calculation
         if tds == 'geoloil':
             tds_nacl = 1 / (rwa75 - 0.0123) / (1.79 * 0.0001)  # GeolOil's method
-        elif tds == 'crain':
-            tds_nacl = 400000 / form_temp / (rwa ** 1.14)  # Crain's method
-        else:
+        elif tds == 'bakeratlas':
             tds_nacl = 10 ** ((3.562 - (np.log10(rwa75 - 0.0123))) / 0.955)  # Baker Atlas's method from Crain's PH
+        else:
+            tds_nacl = 400000 / form_temp / (rwa ** 1.14)  # Crain's method
 
         # weight percent total dissolved solids
         xsaltw = 10 ** (-0.5268 * (np.log10(rw75)) ** 3 - 1.0199 * (np.log10(rw75)) ** 2 - 1.6693 * (
@@ -1046,10 +1185,6 @@ class LasIO(LASFile):
                     pe_clean = (self['PE_N'][i] - (pe_om * bvom + pe_clay * bvclay + pe_pyr * bvpyr)) / \
                                (1 - bvom - bvclay - bvpyr)
 
-                    # For debugging:
-                    # print("Number of NaN in rhob_clean:", np.isnan(rhob_clean).sum(), 'and index is', i)
-                    # print("Number of NaN in nphi_clean:", np.isnan(nphi_clean).sum())
-                    # print("Number of NaN in pe_clean:", np.isnan(pe_clean).sum())
 
                     l_clean = np.asarray([rhob_clean, nphi_clean,
                                           pe_clean, 1])
