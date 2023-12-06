@@ -58,4 +58,4 @@ Excutable version of MoPAnDA can be downloaded from the [Release] page of the Mo
 [Release]: https://github.com/geofzhang/MoPanda/releases
 [Anaconda]: https://www.anaconda.com/download/
 [Miniconda]: https://docs.conda.io/projects/miniconda/en/latest/
-[Python Setup]: /python-setup/
+[Python Setup]: python-setup.md
