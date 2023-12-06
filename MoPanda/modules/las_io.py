@@ -824,6 +824,456 @@ class LasIO(LASFile):
                            archie_weight=0, indonesia_weight=1, simandoux_weight=0,
                            modified_simandoux_weight=0, waxman_smits_weight=0, cec=-1,
                            buckles_parameter=-1):
+        """
+        Calculates a petrophysical lithology and porosity model for
+        conventional and unconventional reservoirs. For each depth, the
+        method iterates in a 4 step loop until convergence.
+
+        **1. Calculate Clay Volume**
+
+        Clay volume is calculated using a weighted method. Five
+        different equations are available
+
+        I. Linear
+
+        .. math::
+
+            gr\_index &= \\frac{GR_LOG - gr\_matrix}
+                               {gr\_clay - gr_matrix}
+
+            VCLAY &= gr\_index
+
+        II. Clavier
+
+        .. math::
+
+            VCLAY = 1.7 - \sqrt{3.38 - (gr\_index + 0.7)^2}
+
+        III. Larionov Tertiary Rocks
+
+        .. math::
+
+            VCLAY = 0.083 * (2^{3.7 * gr\_index} - 1)
+
+        IV. Neutron
+        Calculate apparent nuetron log without organic matter, nphia.
+
+        .. math::
+
+            nphia = NPHI\_LOG + (nphi\_matrix - nphi\_om) * vom
+
+        Calculate vclay using neutron
+
+        .. math::
+
+            VCLAY = \\frac{nphia - nphi\_matrix}
+                          {nphi\_clay - nphi\_matrix}
+
+        V. Neutron Density
+
+        Calculate apprent density log without organic mater, rhoba.
+
+        .. math::
+
+            rhoba = RHOB\_LOG + (rhom - rho\_om) * vom
+
+        Calculate vclay using neutron density
+
+        .. math::
+
+            m1 &= \\frac{nphi\_fl - nphi\_matrix}{rho\_fl - rhom} \\\\
+            x1 &= nphi + m1 * (rhom - rhoba) \\\\
+            x2 &= nphi\_clay + m1 * (rhom - rhoba) \\\\
+            VCLAY &= \\frac{x1 - nphi\_matrix}{x2 - nphi\_matrix} \\\\
+
+
+        First, the clay volume of the resepective euqations are
+        calculated. They are then weighted with the vclay_weight.
+        For example, if vclay_weight for every method is 1, then the
+        final vclay is the average of the four equations. To use a
+        single method, set :code:`vclay_method_weight = 1` and all
+        other :code:`vclay_weight = 0`.
+
+        **2. Calculate Total Organic Carbon And Pyrite**
+
+        TOC is calculated use a weighted method like vclay with three
+        available equations:
+
+        I. Schomker's Density Correlation
+
+        .. math::
+
+            TOC = schmoker\_slope*(schmoker\_baseline\_rhob-RHOB\_LOG)
+
+        II. Passey's Nuetron Delta Log R
+
+        .. math::
+
+            dlr &= 10^{\\frac{RESDEEP\_LOG}{passey\_baseline\_res}} +
+                4 * (NPHI\_LOG - passey\_baseline\_nphi)
+
+            TOC&=\\frac{dlr\_nphi * 10^{2.297 - 0.1688 * passey\_lom}}
+                       {100}
+
+        III. Passey's Density Delta Log R
+
+        .. math::
+
+            dlr &= 10^{\\frac{RESDEEP\_LOG}{passey\_baseline\_res}} -
+                2.5 * (RHOB\_LOG - passey\_baseline\_rhob)
+
+            TOC&=\\frac{dlr\_nphi * 10^{2.297 - 0.1688 * passey\_lom}}
+                       {100}
+
+        For conventional reservoirs without organics,
+        set :code:`vclay_cutoff = 1`.
+
+        **3. Calculate Minerals And Porosity**
+
+        Non-negative least squares is used to find the remaining
+        minerals according to the method described in Chapter 4 of
+        Doveton's Principles of Mathematical Petrophysics.
+
+        .. math::
+
+            V = C^{-1} L
+
+        Pure mineral log responses are required. For example, quartz
+        would have the input:
+        ::
+
+            include_qtz = 'YES'
+            rho_qtz = 2.65
+            nphi_qtz = -0.04
+            pe_qtz = 1.81
+
+        An option to include exotic minerals is by specifiying the
+        density, neutron, and pe response of mineral 'X'. For example,
+        to add gypsum, use these parameters:
+        ::
+
+            include_x = 'YES'
+            name_x = 'Gypsum'
+            name_log_x = 'GYP'
+            rho_x = 2.35
+            nphi_x = 0.507
+            pe_x = 4.04
+
+        To exclude minerals because they are not present or essentially
+        not present in the reservoir, set the include parameter to
+        'NO'. For example, to exclude dolomite:
+        ::
+
+            include_dol = 'NO'
+
+        4. Calculate Saturations
+
+        Saturation is calculated using a weighted method like vclay and
+        toc. To use a single equation set equation_weight = 1 and all
+        other equation_weight = 0. For example, to use only the
+        Indonesia equation set parameters to:
+        ::
+
+            archie_weight = 0
+            simandoux_weight = 0
+            modified_simandoux_weight = 0
+            indonesia_weight = 1
+            waxman_smits_weight = 0
+
+        Five saturation equations are available
+
+        I. Archie
+
+        .. math::
+
+            SW=\left(\\frac{a \\times RW\_LOG}
+                           {RESDEEP\_LOG \\times phie^m}
+                \\right)^{\\frac{1}{n}}
+
+        II. Simandoux
+
+        .. math::
+
+            c &= \\frac{(1 - vclay) \\times a \\times RESDEEP\_LOG}
+                       {phie^m}
+
+            d &= \\frac{c \\times vclay}{2 \\times rt\_clay}
+
+            e &= \\frac{c}{RESDEEP\_LOG}
+
+            SW &= ((d^2 + e)^2 - d)^{\\frac{2}{n}}
+
+        III. Modified Simandoux
+
+        IV. Indonesia (Poupon-Leveaux)
+
+        .. math::
+
+            f &= \sqrt{\\frac{phie^m}{RESDEEP\_LOG}} \\\\
+            g &= \sqrt{\\frac{vclay^{2 - vclay}}{rt\_clay}} \\\\
+            SW &= ((f + g)^2 * RESDEEP\_LOG)^{\\frac{-1}{n}}
+
+        V. Waxman And Smits
+
+        CEC
+            if cec <= 0
+
+            .. math::
+
+                cec = 10^{1.9832 \\times vclay - 2.4473}
+
+            else
+                use input cec
+
+        SW
+
+        .. math::
+
+            rw77&=RESDEEP\_LOG * \\frac{reservoir\_temperature + 6.8}
+                                       {83.8}
+
+            b &= 4.6 * (1 - 0.6 \\times e^{\\frac{-0.77}{rw77}})
+
+            f &= \\frac{a}{phie^m}
+
+            qv &= \\frac{cec (1 - phie) rhom}{phie}
+
+            SW &= 0.5 * \left((-b \\times qv \\times rw77) +
+                  \sqrt{(b \\times qv \\times rw77)^2 +
+                  \\frac{4 * f * rw}{RESDEEP\_LOG}}
+                  \\right)^{\\frac{2}{n}}
+
+        **4. Update Fluid Properties**
+
+        .. math::
+
+            rho\_fl &= RHO\_W \\times Sw + RHO\_HC \\times (1 - Sw)
+
+            nphi\_fl &= NPHI\_W \\times Sw + NPHI\_HC \\times (1 - Sw)
+
+        Parameters
+        ----------
+        gr_matrix : float (default 10)
+            Gamma Ray response of clean (non-clay) matrix
+        nphi_matrix : float (default 0)
+            Neutron response of clean (non-clay) matrix
+        gr_clay : float (default 450)
+            Gamma Ray response of pure clay matrix
+        rho_clay : float (default 2.64)
+            Density of pure clay matrix
+        nphi_clay : float (default 0.65)
+            Neutron reponse of pure clay matrix
+        pe_clay : float (default 4)
+            Photoelectric response of pure clay matrix
+        rma : float (default 180)
+            Resistivity of clean tight matrix
+        rt_clay : float (default 80)
+            Resistivity for inorganic shale matrix
+        vclay_linear_weight : float (default 1)
+            Weight of liner clay volume
+        vclay_clavier_weight : float (defaul 0.5)
+            Weight of Clavier clay volume
+        vclay_larionov_weight : float (defaul 0.5)
+            Weight of Larionov clay volume
+        vclay_nphi_weight : float (default 1)
+            Weight of Neutron clay volume
+        vclay_nphi_rhob_weight : float (default 1)
+            Weight of Neutron Density clay volume
+        vclay_cutoff : float (default 0.05)
+            Cutoff for oranics calculation.
+            If vclay < vclay_cutoff then toc = 0
+        rho_om : float (default 1.15)
+            Density of organic matter
+        nphi_om : float (default 0.6)
+            Neutron response of pure organic matter
+        pe_om : float (default 0.2)
+            Photoelectric response of pure organic matter
+        ro : float (default 1.6)
+            Vitronite reflectance of organic matter
+        lang_press : float (default 670)
+            Langmiur pressure gas adsorption on organic matter in psi
+        passey_nphi_weight : float (default 1)
+            Weight for Passey nphi toc
+        passey_rhob_weight : float (default 1)
+            Weight for Passey rhob toc
+        passey_lom : float (default 10)
+            Passey level of organic maturity
+        passey_baseline_res : float (default 40)
+            Passey inorganic baseline resistivity
+        passey_baseline_rhob : float (default 2.65)
+            Passey inorganic baseline density
+        passey_baseline_nphi : float (default 0)
+            Passey inorganic baseline neutron
+        schmoker_weight : float (default 1)
+            Weight for Schmoker toc
+        schmoker_slope : float (default 0.7257)
+            Slope for schmoker density to toc correlation
+        schmoker_baseline_rhob : float (default 2.6)
+            Density cutoff for schmoker toc correlation
+        rho_pyr : float (default 5)
+            Density of pyrite
+        nphi_pyr : float (default 0.13)
+            Neutron response of pure pyrite
+        pe_pyr : float (default 13)
+            Photoelectric response of pure pyrite
+        om_pyrite_slope : float (default 0.2)
+            Slope correlating pyrite volume to organic matter
+        include_qtz : str {'YES', 'NO'} (default 'YES')
+            Toggle to include or exclude qtz.
+            'YES' to include. 'NO' to exclude.
+        rho_qtz : float (default 2.65)
+            Density of quartz
+        nphi_qtz : float (default -0.04)
+            Neutron response for pure quartz
+        pe_qtz : float (default 1.81)
+            Photoelectric response for pure quartz
+        include_clc : str {'YES', 'NO'} (default 'YES')
+            Toggle to include or exclude clc.
+            'YES' to include. 'NO' to exclude.
+        rho_clc : float (default 2.71)
+            Density of calcite
+        nphi_clc : float (default 0)
+            Neutron response for pure calcite
+        pe_clc : float (default 5.08)
+            Photoelectric response for pure calcite
+        include_dol : str {'YES', 'NO'} (default 'YES')
+            Toggle to include or exclude dol.
+            'YES' to include. 'NO' to exclude.
+        rho_dol : float (default 2.85)
+            Density of dolomite
+        nphi_dol : float (default 0.04)
+            Neutron response to dolomite
+        pe_dol : float (default 3.14)
+            Photoelectric response to dolomite
+        include_x : str {'YES', 'NO'} (default 'NO')
+            Toggle to include or exclude exotic mineral, x.
+            'YES' to include. 'NO' to exclude.
+        name_x : str (default 'Gypsum')
+            Name of exotic mineral, x.
+        name_log_x : str (default 'GYP')
+            Log name of exotic mineral, x
+        rho_x : float (default 2.35)
+            Density of exotic mineral, x
+        nphi_x : float (default 0.507)
+            Neutron response of exotic mineral, x
+        pe_x : float (default 4.04)
+            Photoelectric respone of exotic mineral, x
+        pe_fl : float (default 0)
+            Photoelectric response of reservoir fluid.
+        m : float (default 2)
+            Cementation exponent
+        n : float (default 2)
+            Saturation exponent
+        a : float (default 1)
+            Cementation constant
+        cec : float (default -1)
+            Cation Exchange Capaticy for use in Waxman Smits equation.
+            If cec = -1, correlation equation is used to calculate cec.
+        archie_weight : float (default 0)
+            Weight for archie Sw
+        indonesia_weight : float (default 1)
+            Weight for Indonesia Sw
+        simandoux_weight : float (default 0)
+            Weight for Simandoux Sw
+        modified_simandoux_weight : float (default 0)
+            Weight for Modified Simandoux Sw
+        waxman_smits_weight : float (default 0)
+            Weight for Waxman Smits Sw
+        buckles_parameter : float (default -1)
+            Buckles parameter for calculating irreducible water
+            saturation. If less than 0, it is calculated using a
+            correlation.
+
+        Raises
+        ------
+        ValueError
+            If fluid properties curve values are not present in log,
+            then ValueError is raised with incorrect curve requirements
+
+        ValueError
+            If raw curves GR_N, NPHI_N, RHOB_N, and RESDEEP_N are not
+            present, then ValueError is raised with incorrect curve
+            requirements as raw curve is either not present or
+            precondtioning has not been properly run.
+
+        ValueError
+            If no formation value factor is found, then ValueError is
+            raised to satisfy the calculation requirements.
+
+        References
+        ----------
+        **VCLAY**
+
+        Clavier, C., W. Hoyle, and D. Meunier, 1971a, Quantitative
+            interpretation of thermal neutron decay time logs: Part I.
+            Fundamentals and techniques: Journal of Petroleum
+            Technology, 23, 743–755
+
+        Clavier, C., W. Hoyle, and D. Meunier, 1971b, Quantitative
+            interpretation of thermal neutron decay time logs: Part II.
+            Interpretation example, interpretation accuracy, and
+            timelapse technique: Journal of Petroleum Technology,
+            23, 756–763.
+
+        Larionov VV (1969).Borehole Radiometry: Moscow, U.S.S.R. Nedra.
+
+        Nuetron, and Neutron Density taken from presentations.
+        Need publish papers for citation.
+
+        **TOC**
+
+        Passey, Q. R., Creaney, S., Kulla, J. B., Moretti, F. J.,
+            Stroud, J. D., 1990, Practical Model for Organic Richness
+            from Porosity and Resistivity Logs, AAPG Bulletin, 74,
+            1777-1794
+
+        Schmoker, J.W., 1979, Determination of organic content of
+            Appalachian Devonian shales from formation-density logs:
+            American Association of Petroleum Geologists Bulletin,
+            v.63, no.9, p.1504-1509
+
+        **MATRIX**
+
+        Doveton, John H. Principles of Mathematical Petrophysics.
+            Oxford: Oxford University Press, 2014.
+
+        **SATURATIONS**
+
+        Archie, G.E. 1942. The Electrical Resistivity Log as an Aid in
+            Determining Some Reservoir Characteristics. Trans. of AIME
+            146 (1): 54-62.
+
+        Bardon, C., and Pied, B.,1969, Formation water saturation in
+            shaly sands: Society of Professional Well Log Analysts 10th
+            Annual Logging Symposium Transactions: Paper Z,19 pp.
+
+        Poupon, A. and Leveaux, J. 1971. Evaluation of Water
+            Saturations in Shaly Formations. The Log Analyst 12 (4)
+
+        Simandoux, P., 1963, Dielectricmeasurements on porous media
+            application to the measurement of water saturations: study
+            of the behaviour of argillaceous formations: Revue de
+            l'Institut Francais du Petrole 18, Supplementary Issue,
+            p. 193-215.
+
+        Waxman, M.H., and L.J.M. Smits, Electrical Conductivity in Oil
+            Bearing Shaly Sands, Society of Petroleum Engineers
+            Journal, June, p.107-122, 1968.
+
+
+        Note
+        ----
+            1. Clay bound water
+                Clay bound water is included as part of the clay volume
+                based on the default nphi_clay = 0.65. To calculate
+                clay bound water seperately, set nphi_clay to clay
+                matrix absent clay bound water, and include appropriate
+                buckles_parameter for bound water saturations.
+
+            2. Organics
+                No differieniation is made between kerogen and other
+                organic matter.
+        """
 
         # initialize required curves
         required_raw_curves = ['SGR_N', 'NPHI_N', 'RHOB_N', 'RESDEEP_N']

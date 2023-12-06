@@ -26,7 +26,7 @@ Much of its modules are designed to be a complimentary scoping tool for CCUS/CCS
 This project is based on multiple opensource packages:
 
 * [lasio]: .LAS file reading and writing. lasio_ also provides standard output data structure across many petrophysical data processing softwares ([welly], [PetroPy]...)
-* [PetroPy]: Funcdation of this project but sadly it's no longer updated and supported. MoPanda harvests the reservoir fluid property and multimineral model functions from [PetroPy].
+* [PetroPy]: Foundation of this project but sadly it's no longer updated and supported. MoPanda harvests the reservoir fluid property and multimineral model functions from [PetroPy].
 * [PfEFFER] by KGS: [PfEFFER] is part of the KGS [GEMINI] project (currently finished development with no technical support) which created a complex petrophysical and geological processing software based on Java. However, it was talored to the complete and well-maintained database KGS has, thus lacking flexibility.
 
 

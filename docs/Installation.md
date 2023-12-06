@@ -1,53 +1,61 @@
----
-title: Getting Started
----
 
-# **MoPAnDA** 
+# Installation
 
-**M**odular Petrophysical Analysis and Data Analysis tool
+MoPAnDA is a Python-based tool which means it is relying on the Python programming language, developing environment, and its dependencies. Therefore, Python is required to be able to use or develop the script version of MoPAnDA.
 
----
-## **What is MoPAnDA**?
+!!! tip "Make sure you are Pythoned!"
 
-MoPAnDA is a petrophysics with python software built with graphyical user interface (GUI), allowing scientific python computing of conventional and unconventional formation evaluation. 
-Much of its modules are designed to be a complimentary scoping tool for CCUS/CCS projects.
+    If you have not yet installed Python in your system, or you don't have prior experience with Python, we recommend followiing [Python Setup] section and install [Anaconda] or [Miniconda] accordingly.
 
-MoPAnDA can achieve following functions through GUI:
+There are currently two ways of having MoPAnDA in your computer (only for Windows users currently):
 
-- Load and output data from .las, .dlis, .xlsx, .csv files.
-- Editing and displaying logs in realtime.
-- Data imputation and explorative analysis.
-- Superwised and unsupervised prediction of missing logs and electrofacies.
-- Petrophysical workflow. 
+ - Installing via GitHub
+ - Downloading excutive software
 
----
+## with GitHub <small>recommended</small>
 
-This project is based on multiple opensource packages:
+MoPAnDA can be directly used from [GitHub] by directly downloading the whole repository or cloning the
+repository which might be useful if you want to use the very latest version:
 
-* [lasio]: .LAS file reading and writing. lasio_ also provides standard output data structure across many petrophysical data processing softwares ([welly], [PetroPy]...)
-* [PetroPy]: Funcdation of this project but sadly it's no longer updated and supported. MoPanda harvests the reservoir fluid property and multimineral model functions from [PetroPy].
-* [PfEFFER] by KGS: [PfEFFER] is part of the KGS [GEMINI] project (currently finished development with no technical support) which created a complex petrophysical and geological processing software based on Java. It allows the geologist to seamlessly integrate databases and geological analytical tools across the web. Analytical tools were designed for the independent oil and gas operators, consultants, and widely separated team members within and outside companies.
+=== "Download from GitHub"
+
+    :material-numeric-1-circle: On GitHub.com, navigate to the MoPAnDA [GitHub] main page.
+
+    :material-numeric-2-circle: Above the list of files, click :octicons-code-16: **Code**.
+
+    :material-numeric-3-circle: In the dropdown list, click :octicons-file-zip-16: **Download ZIP**.
 
 
+=== "Clone with Git"
 
-## Commands
+    :material-numeric-1-circle: Make sure you have [Git] installed.
+    
+    :material-numeric-2-circle: Open `Git Bash`.
 
-* `mkdocs new [dir-name]` - Create a new project.
-* `mkdocs serve` - Start the live-reloading docs server.
-* `mkdocs build` - Build the documentation site.
-* `mkdocs -h` - Print help message and exit.
+    :material-numeric-3-circle: Change the current working directory to the location where you want the cloned directory.
 
-## Project layout
+    :material-numeric-3-circle: Type following command into `Git Bash`:
+ 
+    ```
+    git clone https://github.com/geofzhang/MoPanda.git
+    ```
 
-    mkdocs.yml    # The configuration file.
-    docs/
-        index.md  # The documentation homepage.
-        ...       # Other markdown pages, images and other files.
+## with Excutable
+
+Excutable version of MoPAnDA can be downloaded from the [Release] page of the MoPAnDA project.
+
+!!! warning
+
+    Note that the excutable version of MoPAnDA bundles some actively-developing open-source packages, which will introduce unknown and unpredictable errores as MoPAnDA has not been extensively tested with data outside of authors' domain.
+
+    Using the distibuted source code is recommanded.
 
 
 
-[lasio]: https://github.com/kinverarity1/lasio
-[PetroPy]: https://github.com/toddheitmann/petropy
-[welly]: https://github.com/agilescientific/welly
-[PfEFFER]: https://www.kgs.ku.edu/software/PfEFFER-java/index.html
-[GEMINI]: https://www.kgs.ku.edu/Gemini/Tools/Tools.html
+
+[GitHub]: https://github.com/geofzhang/MoPanda
+[Git]: https://git-scm.com/downloads
+[Release]: https://github.com/geofzhang/MoPanda/releases
+[Anaconda]: https://www.anaconda.com/download/
+[Miniconda]: https://docs.conda.io/projects/miniconda/en/latest/
+[Python Setup]: /python-setup/
