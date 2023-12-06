@@ -2,8 +2,8 @@ site_name: MoPAnDA Documentation
 nav:
   - Home: index.md
   - Getting Started:
-    - Installation: installation.md
     - Python Setup: python-setup.md
+    - Installation: installation.md
     - Data Management:
       - Well Scraper: scraper.md
 
@@ -56,9 +56,6 @@ theme:
       example: octicons/beaker-16
       quote: octicons/quote-16 
     
-    
-
-plugins:
 markdown_extensions:
   - admonition
   - attr_list
