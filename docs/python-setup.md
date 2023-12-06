@@ -188,17 +188,17 @@ Note that even though **Jupyter Notebook** and **Spyder** are included in the **
 [python.org]: https://www.python.org/
 [Official Conda repository]: https://repo.anaconda.com/
 [Conda]: https://conda.org/
-[Conda Repo]: ./_assets/_images/conda_repo.png
+[Conda Repo]: ../_assets/_images/conda_repo.png
 [All Installers]: https://repo.anaconda.com/archive/
-[Anaconda Install]: ./_assets/_images/anaconda_install.png
+[Anaconda Install]: ../_assets/_images/anaconda_install.png
 [instruction]: https://gist.github.com/kauffmanes/5e74916617f9993bc3479f401dfec7da
-[Conda PATH]: ./_assets/_images/anaconda_install_PATH.png
+[Conda PATH]: ../_assets/_images/anaconda_install_PATH.png
 [Installing Miniconda]: https://docs.conda.io/projects/miniconda/en/latest/miniconda-install.html
-[Environments]: ./_assets/_images/anaconda_environments.png
-[Create]: ./_assets/_images/anaconda_environments_create.png
-[Environment setting]: ./_assets/_images/anaconda_environments_setting.png
-[Check env]: ./_assets/_images/check_env.png
+[Environments]: ../_assets/_images/anaconda_environments.png
+[Create]: ../_assets/_images/anaconda_environments_create.png
+[Environment setting]: ../_assets/_images/anaconda_environments_setting.png
+[Check env]: ../_assets/_images/check_env.png
 [How to set up PATH Environments in Windows for Python]: https://www.youtube.com/watch?v=mf5u2chPBjY&t=933s
 [PyCharm Community Edition]: https://download.jetbrains.com/python/pycharm-community-2023.3.exe
-[Interpreter_new project]: ./_assets/_images/pycharm_interpreter_newproject.png
-[Interpreter_local]: ./_assets/_images/pycharm_interpreter_local.png
+[Interpreter_new project]: ../_assets/_images/pycharm_interpreter_newproject.png
+[Interpreter_local]: ../_assets/_images/pycharm_interpreter_local.png
