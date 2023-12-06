@@ -163,9 +163,19 @@ Note that even though **Jupyter Notebook** and **Spyder** are included in the **
 
 :material-numeric-2-circle: Open the PyCharm and create or load a new project.
 
-:material-numeric-3-circle: If creating a new project, set up the interpreter by selecting `Previously condigured interpreter` and Click `Add Interpreter`.
+:material-numeric-3-circle: If creating a new project, set up the interpreter by selecting `Previously configured interpreter` and Click `Add Interpreter`.
 
 ![Interpreter_new project]
+
+!!! tip "No previously configured interpreter?"
+
+    It is common to have no previously configured interpreter as PyCharm has not yet connected with Conda yet.
+
+    Click `Conda Based` and find your Conda Executable:
+    ```
+    C:\Users\<YOUR USER NAME>\AppData\Local\anaconda3\Scripts\conda.exe
+    ``` 
+
 
 :material-numeric-4-circle: Click `Add Local Interpreter` and Select `Conda Environment` -> `Using existing environment`
 
