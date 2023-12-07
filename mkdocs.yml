@@ -3,7 +3,7 @@ nav:
   - Home: index.md
   - Getting Started:
     - Python Setup: python-setup.md
-    - Installation: installation.md
+    - Installation: install_mopanda.md
     - Data Management:
       - Well Scraper: scraper.md
 

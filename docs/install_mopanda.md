@@ -1,4 +1,3 @@
-
 # Installation
 
 MoPAnDA is a Python-based tool which means it is relying on the Python programming language, developing environment, and its dependencies. Therefore, Python is required to be able to use or develop the script version of MoPAnDA.
@@ -49,9 +48,6 @@ Excutable version of MoPAnDA can be downloaded from the [Release] page of the Mo
     Note that the excutable version of MoPAnDA bundles some actively-developing open-source packages, which will introduce unknown and unpredictable errores as MoPAnDA has not been extensively tested with data outside of authors' domain.
 
     Using the distibuted source code is recommanded.
-
-
-
 
 [GitHub]: https://github.com/geofzhang/MoPanda
 [Git]: https://git-scm.com/downloads
