@@ -51,7 +51,7 @@ class ColorPaletteDialog(QDialog):
         self.accept()
 
 
-class LASApp(QMainWindow):
+class LASEditor(QMainWindow):
     def __init__(self):
         super().__init__()
 
@@ -2611,5 +2611,5 @@ class AnchoredTextItem(pg.TextItem):
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    ex = LASApp()
+    ex = LASEditor()
     sys.exit(app.exec())

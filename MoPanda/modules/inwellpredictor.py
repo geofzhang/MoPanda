@@ -118,7 +118,7 @@ class InWellPredictor:
                         messagebox.showerror("Error", "The .xlsx file does not have a 'Curves' sheet.")
                         return
                     self.dataframe = pd.read_excel(self.filename, sheet_name='Curves', index_col=0)
-                elif self.filename.endswith('.las'):
+                elif self.filename.endswith('.LAS'):
                     las = lasio.read(self.filename)
                     self.dataframe = las.df()
                 # Update the selected file entry with the file path
@@ -323,7 +323,7 @@ class InWellPredictor:
                 self.dataframe.to_csv(self.filename)
             elif self.filename.endswith('.xlsx'):
                 self.dataframe.to_excel(self.filename, sheet_name='Curves')
-            elif self.filename.endswith('.las'):
+            elif self.filename.endswith('.LAS'):
                 las = lasio.read(self.filename)
                 # Update the LAS file with the modified DataFrame
                 for column in self.dataframe.columns:

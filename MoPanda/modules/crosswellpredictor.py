@@ -466,10 +466,9 @@ class CrossWellPredictor(tk.Tk):
                 self.well_data = pd.read_csv(file_path)
             elif file_path.endswith('.xlsx'):
                 self.well_data = pd.read_excel(file_path, sheet_name=1)
-            elif file_path.endswith('.las'):
+            elif file_path.endswith('.LAS'):
                 self.well_data = lasio.read(file_path).df().reset_index()
                 self.las_file_paths[filename] = file_path
-
             # Store the data based on the mode (train/predict)
 
             if mode == "train":

@@ -1,6 +1,7 @@
 import os
 import tkinter as tk
 from tkinter import ttk
+import sys
 
 from modules import wellfilter
 
@@ -25,7 +26,7 @@ def create_main_gui():
     def open_las_viewer_tab():
         # Importing the WellLogGUI class here to avoid circular imports
         from modules.las_viewer import WellLogGUI
-        las_viewer = WellLogGUI(app)
+        WellLogGUI(app)
 
     def open_curve_fitter():
         from modules.curvefitter import CMRPermeabilityApp
@@ -44,6 +45,13 @@ def create_main_gui():
     def open_cp():
         pass
 
+    def open_las_editor():
+        from modules.las_editor import LASEditor
+        from PyQt6.QtWidgets import QApplication, QMainWindow
+        app = QApplication(sys.argv)
+        ex = LASEditor()
+        app.exec()
+
     def open_inwellpredictor():
         from modules.inwellpredictor import InWellPredictor
         InWellPredictor()
@@ -51,6 +59,11 @@ def create_main_gui():
     def open_crosswellpredictor():
         from modules.crosswellpredictor import CrossWellPredictor
         CrossWellPredictor()
+
+    def open_legacy_log_converter():
+        from modules.legacylog import LegacyLogConverter
+        converter = LegacyLogConverter()
+        converter.run()
 
     # Define custom font for labels
     label_font = ("Arial", 10, "bold")  # Change "Arial" to any other font if desired.
@@ -101,6 +114,19 @@ def create_main_gui():
     open_las_viewer_button = tk.Button(dm_tab, text="Open LAS Viewer", command=open_las_viewer_tab)
     open_las_viewer_button.pack(anchor=tk.W, padx=20, pady=5)
     add_separator(dm_tab)
+
+    # === Edit & Display ===
+    edit_tab = ttk.Frame(tab_control)
+    tab_control.add(edit_tab, text="Edit & Display")
+
+    # --- LAS editor section ---
+    ttk.Label(edit_tab, text="LAS Edit & Display", font=label_font).pack(anchor=tk.W, padx=10, pady=5)
+    add_separator(edit_tab)
+
+    # LAS editor
+    open_laseditor_button = tk.Button(edit_tab, text="Open Interactive LAS Editor and Displayer", command=open_las_editor)
+    open_laseditor_button.pack(anchor=tk.W, padx=20, pady=5)
+    add_separator(edit_tab)
 
     # === Data Analysis Tab ===
     da_tab = ttk.Frame(tab_control)
@@ -190,6 +216,19 @@ def create_main_gui():
     others_tab = ttk.Frame(tab_control)
     tab_control.add(others_tab, text="Others")
     # Note: Implement any content for 'Others' here when needed
+
+    # --- core analysis section ---
+    ttk.Label(others_tab, text="Core Analysis", font=label_font).pack(anchor=tk.W, padx=10, pady=5)
+    add_separator(others_tab)
+
+    # --- core analysis section ---
+    ttk.Label(others_tab, text="Other Log Calculations", font=label_font).pack(anchor=tk.W, padx=10, pady=5)
+    add_separator(others_tab)
+    # Capillary pressure
+    open_legacy_button = tk.Button(others_tab, text="Legacy Log Converter", command=open_legacy_log_converter)
+    open_legacy_button.pack(anchor=tk.W, padx=20, pady=5)
+    add_separator(others_tab)
+
 
     tab_control.pack(expand=1, fill="both")
     app.mainloop()

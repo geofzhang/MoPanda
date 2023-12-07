@@ -45,7 +45,7 @@ def process_las_files(curves_list):
 
     for root, _, files in os.walk(input_folder):
         for file in files:
-            if file.endswith(".las"):
+            if file.endswith(".LAS"):
                 las_file_path = os.path.join(root, file)
                 log = LasIO(las_file_path)
 
