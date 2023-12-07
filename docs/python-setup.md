@@ -188,17 +188,17 @@ Note that even though **Jupyter Notebook** and **Spyder** are included in the **
 [python.org]: https://www.python.org/
 [Official Conda repository]: https://repo.anaconda.com/
 [Conda]: https://conda.org/
-[Conda Repo]: ../assets/images/conda_repo.png
+[Conda Repo]: assets/images/conda_repo.PNG
 [All Installers]: https://repo.anaconda.com/archive/
-[Anaconda Install]: ../assets/images/anaconda_install.png
+[Anaconda Install]: assets/images/anaconda_install.PNG
 [instruction]: https://gist.github.com/kauffmanes/5e74916617f9993bc3479f401dfec7da
-[Conda PATH]: ../assets/images/anaconda_install_PATH.png
+[Conda PATH]: assets/images/anaconda_install_PATH.PNG
 [Installing Miniconda]: https://docs.conda.io/projects/miniconda/en/latest/miniconda-install.html
-[Environments]: ../assets/images/anaconda_environments.png
-[Create]: ../assets/images/anaconda_environments_create.png
-[Environment setting]: ../assets/images/anaconda_environments_setting.png
-[Check env]: ../assets/images/check_env.png
+[Environments]: assets/images/anaconda_environments.PNG
+[Create]: assets/images/anaconda_environments_create.PNG
+[Environment setting]: assets/images/anaconda_environments_setting.PNG
+[Check env]: assets/images/check_env.PNG
 [How to set up PATH Environments in Windows for Python]: https://www.youtube.com/watch?v=mf5u2chPBjY&t=933s
 [PyCharm Community Edition]: https://download.jetbrains.com/python/pycharm-community-2023.3.exe
-[Interpreter_new project]: ../assets/images/pycharm_interpreter_newproject.png
-[Interpreter_local]: ../assets/images/pycharm_interpreter_local.png
+[Interpreter_new project]: assets/images/pycharm_interpreter_newproject.PNG
+[Interpreter_local]: assets/images/pycharm_interpreter_local.PNG

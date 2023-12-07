@@ -41,9 +41,3 @@ This project is based on multiple opensource packages:
 [welly]: https://github.com/agilescientific/welly
 [PfEFFER]: https://www.kgs.ku.edu/software/PfEFFER-java/index.html
 [GEMINI]: https://www.kgs.ku.edu/Gemini/Tools/Tools.html
-
-
-<style>
-big { color: #338eee; font-size:30px }
-small { color: yellow }
-</style>
