@@ -17,7 +17,7 @@ Much of its modules are designed to be a complimentary scoping tool for CCUS/CCS
 - Load and output data from `.las`, `.dlis`, `.xlsx`, `.csv` files.
 - Editing and displaying logs in realtime.
 - Data imputation and explorative analysis.
-- Superwised and unsupervised prediction of missing logs and electrofacies.
+- Supervised and unsupervised prediction of missing logs and electrofacies.
 - Petrophysical workflow. 
 
 ---
@@ -41,3 +41,9 @@ This project is based on multiple opensource packages:
 [welly]: https://github.com/agilescientific/welly
 [PfEFFER]: https://www.kgs.ku.edu/software/PfEFFER-java/index.html
 [GEMINI]: https://www.kgs.ku.edu/Gemini/Tools/Tools.html
+
+
+<style>
+big { color: #338eee; font-size:30px }
+small { color: yellow }
+</style>

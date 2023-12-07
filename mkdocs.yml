@@ -4,9 +4,13 @@ nav:
   - Getting Started:
     - Python Setup: python-setup.md
     - Installation: install_mopanda.md
+    - Example Workflows: examples.md
+  - Modules:
     - Data Management:
-      - Well Scraper: scraper.md
-
+      - Well Scraper: modules/scraper.md
+  - API:
+    - Overview: api/overview.md
+    
 theme:
   name: material
   features:

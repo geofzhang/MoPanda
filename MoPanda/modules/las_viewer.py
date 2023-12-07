@@ -63,7 +63,7 @@ class WellLogGUI(tk.Toplevel):
         self.select_output_button = tk.Button(self, text="Select Output Path", command=self.select_output_path)
         self.select_output_button.grid(row=4, column=0, padx=10, pady=5, sticky="w")
 
-        self.export_button = tk.Button(self, text="Export Data", command=self.export_data)
+        self.export_button = tk.Button(self, text="Export Data to .xlsx and .csv", command=self.export_data)
         self.export_button.grid(row=5, column=0, padx=10, pady=5, sticky="w")
 
         # Dropdown menu in the second column, same row as select_file_button

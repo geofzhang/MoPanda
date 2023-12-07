@@ -35,6 +35,15 @@ def create_main_gui():
         from modules.log_calculator import LogCalculator
         LogCalculator()
 
+    def open_geomechanics():
+        pass
+
+    def open_relk():
+        pass
+
+    def open_cp():
+        pass
+
     def open_inwellpredictor():
         from modules.inwellpredictor import InWellPredictor
         InWellPredictor()
@@ -143,13 +152,31 @@ def create_main_gui():
     ttk.Label(pp_tab, text="CMR", font=label_font).pack(anchor=tk.W, padx=10, pady=5)
     add_separator(pp_tab)
 
-    # === Geomechanics Tab ===
-    gm_tab = ttk.Frame(tab_control)
-    tab_control.add(gm_tab, text="Geomechanics")
+    # === Constitutive RelationTab ===
+    cr_tab = ttk.Frame(tab_control)
+    tab_control.add(cr_tab, text="Constitutive")
 
-    # --- Log Predictor section ---
-    ttk.Label(gm_tab, text="Stress", font=label_font).pack(anchor=tk.W, padx=10, pady=5)
-    add_separator(gm_tab)
+    # --- Geomechanics section ---
+    ttk.Label(cr_tab, text="Geomechanics", font=label_font).pack(anchor=tk.W, padx=10, pady=5)
+    add_separator(cr_tab)
+
+    # Geomechanics
+    open_geomechanics_button = tk.Button(cr_tab, text="Geomechanics", command=open_geomechanics)
+    open_geomechanics_button.pack(anchor=tk.W, padx=20, pady=5)
+    add_separator(cr_tab)
+
+    # --- relative permeability section ---
+    ttk.Label(cr_tab, text="Relative Permeability", font=label_font).pack(anchor=tk.W, padx=10, pady=5)
+    add_separator(cr_tab)
+
+    # relk modeling
+    open_relk_button = tk.Button(cr_tab, text="Rel-k modeling", command=open_relk)
+    open_relk_button.pack(anchor=tk.W, padx=20, pady=5)
+
+    # Capillary pressure
+    open_cp_button = tk.Button(cr_tab, text="Capillary pressure modeling", command=open_cp)
+    open_cp_button.pack(anchor=tk.W, padx=20, pady=5)
+    add_separator(cr_tab)
 
     # === Regional Analysis Tab ===
     ra_tab = ttk.Frame(tab_control)
