@@ -1,4 +1,6 @@
+import os
 import tkinter as tk
+from datetime import datetime
 from tkinter import filedialog, messagebox, ttk
 import importlib
 import subprocess
@@ -13,9 +15,11 @@ from sklearn.metrics import mean_squared_error
 from sklearn.model_selection import train_test_split
 import lasio
 
+
 class InWellPredictor:
-    def __init__(self, log=None):
-        self.root = tk.Tk()
+    def __init__(self, master, log=None):
+        # Use Toplevel instead of Tk for the secondary window
+        self.root = tk.Toplevel(master)
         self.root.title("In Well Log Predictor")
 
         self.filename = None
@@ -68,6 +72,10 @@ class InWellPredictor:
 
         self.root.mainloop()
 
+    def update_filename(self, event=None):
+        # Logic to update the filename
+        self.filename = self.selected_file_entry.get()
+
     def check_dependencies(self, packages):
         not_installed = []
         for package in packages:
@@ -76,12 +84,6 @@ class InWellPredictor:
             except ImportError:
                 not_installed.append(package)
         return not_installed
-
-    def update_filename(self, event):
-        """
-        Update the filename attribute when the entry loses focus or Enter is pressed.
-        """
-        self.filename = self.selected_file_entry.get()
 
     def install_dependencies(self, packages):
         for package in packages:
@@ -108,17 +110,20 @@ class InWellPredictor:
         """
         Loads a dataframe based on user's file selection.
         """
-        self.filename = filedialog.askopenfilename(filetypes=[("CSV files", "*.csv"), ("Excel files", "*.xlsx"), ("LAS files", "*.las")])
+        self.filename = filedialog.askopenfilename(filetypes=[("All supported files", "*.csv, *.xlsx, *.las"),
+                                                              ("CSV files", "*.csv"),
+                                                              ("Excel files", "*.xlsx"),
+                                                              ("LAS files", "*.las")])
         if self.filename:
             try:
-                if self.filename.endswith('.csv'):
+                if self.filename.lower().endswith('.csv'):
                     self.dataframe = pd.read_csv(self.filename, index_col=0)
-                elif self.filename.endswith('.xlsx'):
+                elif self.filename.lower().endswith('.xlsx'):
                     if 'Curves' not in pd.ExcelFile(self.filename).sheet_names:
                         messagebox.showerror("Error", "The .xlsx file does not have a 'Curves' sheet.")
                         return
                     self.dataframe = pd.read_excel(self.filename, sheet_name='Curves', index_col=0)
-                elif self.filename.endswith('.LAS'):
+                elif self.filename.lower().endswith('.las'):
                     las = lasio.read(self.filename)
                     self.dataframe = las.df()
                 # Update the selected file entry with the file path
@@ -127,7 +132,6 @@ class InWellPredictor:
                 messagebox.showinfo("Success", "DataFrame loaded successfully!")
             except Exception as e:
                 messagebox.showerror("Error", f"Failed to load file: {e}")
-
 
     def select_logs(self):
         """
@@ -316,25 +320,36 @@ class InWellPredictor:
 
     def export_dataframe(self):
         """
-        Saves the predicted results to the original Excel file.
+        Saves the predicted results to the output folder. Creates the folder if it does not exist.
         """
+        # Export converted data (raw) to either .csv or .xlsx
+        las_file_name = os.path.splitext(os.path.basename(self.filename))[0]
+        current_time = datetime.now().strftime('%m%d%H%M')
+        output_folder = './output/InWellPrediction'
+        excel_output = f'{output_folder}/{las_file_name}_InWellPrediction_{current_time}.xlsx'
+        csv_output = f'{output_folder}/{las_file_name}_InWellPrediction_{current_time}.csv'
+        las_output = f'{output_folder}/{las_file_name}_InWellPrediction_{current_time}.las'
+
+        # Check if the output folder exists, if not, create it
+        if not os.path.exists(output_folder):
+            os.makedirs(output_folder)
+
         try:
-            if self.filename.endswith('.csv'):
-                self.dataframe.to_csv(self.filename)
-            elif self.filename.endswith('.xlsx'):
-                self.dataframe.to_excel(self.filename, sheet_name='Curves')
-            elif self.filename.endswith('.LAS'):
+            if self.filename.lower().endswith('.csv'):
+                self.dataframe.to_csv(csv_output)
+            elif self.filename.lower().endswith('.xlsx'):
+                self.dataframe.to_excel(excel_output, sheet_name='Curves')
+            elif self.filename.lower().endswith('.las'):
                 las = lasio.read(self.filename)
                 # Update the LAS file with the modified DataFrame
                 for column in self.dataframe.columns:
                     if column in las.keys():
                         las[column] = self.dataframe[column].values
                 # Write the updated LAS object to a file
-                las.write(self.filename)
+                las.write(las_output)
             messagebox.showinfo("Success", "Predicted results saved successfully!")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save DataFrame: {e}")
-
 
     def predict_button_click(self):
         """
@@ -360,10 +375,6 @@ class InWellPredictor:
 
         models = ["Ridge Regression", "Random Forest", "XGBoost", "LightGBM", "CatBoost"]
         results = {}
-
-        # self.select_logs()
-        # self.select_log_to_predict()
-        # self.select_depth_interval()
 
         # Display a message box indicating training has started
         messagebox.showinfo("Training Started", "Training started!\n\nDepth Intervals:\n\n" +
@@ -505,4 +516,4 @@ class InWellPredictor:
 
 
 if __name__ == "__main__":
-    predictor = InWellPredictor()
+    predictor = InWellPredictor

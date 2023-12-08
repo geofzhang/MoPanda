@@ -13,6 +13,8 @@ from PyQt6.QtWidgets import (QApplication, QMainWindow, QTableWidget, QTableWidg
                              QSlider)
 from PyQt6.QtGui import QShortcut, QKeySequence, QColor, QFont, QPixmap, QImage, QPainter, QPainterPath
 import numpy as np
+import matplotlib
+matplotlib.use('QtAgg')  # Set this to the appropriate Qt backend
 import matplotlib.pyplot as plt
 import math
 from pyqtgraph import BusyCursor

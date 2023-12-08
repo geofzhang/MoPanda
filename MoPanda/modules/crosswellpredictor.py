@@ -462,11 +462,11 @@ class CrossWellPredictor(tk.Tk):
         for file_path in file_paths:
             filename = os.path.splitext(os.path.basename(file_path))[0]
             print(filename)
-            if file_path.endswith('.csv'):
+            if file_path.lower().endswith('.csv'):
                 self.well_data = pd.read_csv(file_path)
-            elif file_path.endswith('.xlsx'):
+            elif file_path.lower().endswith('.xlsx'):
                 self.well_data = pd.read_excel(file_path, sheet_name=1)
-            elif file_path.endswith('.LAS'):
+            elif file_path.lower().endswith('.las'):
                 self.well_data = lasio.read(file_path).df().reset_index()
                 self.las_file_paths[filename] = file_path
             # Store the data based on the mode (train/predict)
@@ -980,7 +980,7 @@ class CrossWellPredictor(tk.Tk):
             file_path = filedialog.asksaveasfilename(defaultextension=".keras", filetypes=[("Keras files", "*.keras")])
             if file_path:
                 # Ensure the file path has the .keras extension
-                if not file_path.endswith(".keras"):
+                if not file_path.lower().endswith(".keras"):
                     file_path += ".keras"
 
                 # Save the model using the native Keras format
@@ -1018,4 +1018,3 @@ class CrossWellPredictor(tk.Tk):
 # To run the GUI
 if __name__ == "__main__":
     app = CrossWellPredictor()
-    app.mainloop()

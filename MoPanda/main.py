@@ -2,8 +2,29 @@ import os
 import tkinter as tk
 from tkinter import ttk
 import sys
+import threading
+
+from PyQt6.QtWidgets import QApplication
 
 from modules import wellfilter
+
+
+class LASEditorThread(threading.Thread):
+    # Testing: Create new thread for las_editor to avoid potential conflict between QT and TK framework.
+    def __init__(self):
+        threading.Thread.__init__(self)
+        self.app = None
+
+    def run(self):
+        self.app = QApplication(sys.argv)
+        from modules.las_editor import LASEditor
+        editor = LASEditor()
+        editor.show()
+        self.app.exec()
+
+    def stop(self):
+        if self.app:
+            self.app.quit()
 
 
 # Function to create a GUI with tabs
@@ -13,11 +34,12 @@ def create_main_gui():
         copyfiles()
 
     def open_scoping_tab():
-        from modules.scoping import scoping
+        from modules.scoping import MaskingForScoping
+        scoping_window = tk.Toplevel()
         masking_var = tk.BooleanVar()
         gr_filter_var = tk.BooleanVar(value=False)
         input_folder_var = tk.StringVar(value=os.getcwd())  # StringVar to store the selected input folder path
-        scoping(input_folder_var, masking_var, gr_filter_var)
+        MaskingForScoping(scoping_window, input_folder_var, masking_var, gr_filter_var)
 
     def open_dlis_viewer_tab():
         from modules.dlis_io import dlis_viewer
@@ -28,33 +50,28 @@ def create_main_gui():
         from modules.las_viewer import WellLogGUI
         WellLogGUI(app)
 
-    def open_curve_fitter():
-        from modules.curvefitter import CMRPermeabilityApp
-        CMRPermeabilityApp()
-
-    def open_log_calculator_tab():
-        from modules.log_calculator import LogCalculator
-        LogCalculator()
-
     def open_geomechanics():
         pass
 
     def open_relk():
-        pass
+        from modules.relk import RelPerm
+        RelPerm(app)
 
     def open_cp():
         pass
 
     def open_las_editor():
-        from modules.las_editor import LASEditor
-        from PyQt6.QtWidgets import QApplication, QMainWindow
+        # las_editor_thread = LASEditorThread()
+        # las_editor_thread.start()
+
         app = QApplication(sys.argv)
-        ex = LASEditor()
+        from modules.las_editor import LASEditor
+        editor = LASEditor()
         app.exec()
 
     def open_inwellpredictor():
         from modules.inwellpredictor import InWellPredictor
-        InWellPredictor()
+        InWellPredictor(app)
 
     def open_crosswellpredictor():
         from modules.crosswellpredictor import CrossWellPredictor
@@ -124,7 +141,8 @@ def create_main_gui():
     add_separator(edit_tab)
 
     # LAS editor
-    open_laseditor_button = tk.Button(edit_tab, text="Open Interactive LAS Editor and Displayer", command=open_las_editor)
+    open_laseditor_button = tk.Button(edit_tab, text="Open Interactive LAS Editor and Displayer",
+                                      command=open_las_editor)
     open_laseditor_button.pack(anchor=tk.W, padx=20, pady=5)
     add_separator(edit_tab)
 
@@ -165,7 +183,7 @@ def create_main_gui():
     tab_control.add(pp_tab, text="Petrophysics")
 
     # --- Log Calculator section ---
-    ttk.Label(pp_tab, text="Log Calculator and Viewer", font=label_font).pack(anchor=tk.W, padx=10, pady=5)
+    ttk.Label(pp_tab, text="Petrophysical Analysis", font=label_font).pack(anchor=tk.W, padx=10, pady=5)
     add_separator(pp_tab)
     log_calculator_frame = ttk.Frame(pp_tab)
     log_calculator_frame.pack(fill="both", padx=10, pady=5)
@@ -228,7 +246,6 @@ def create_main_gui():
     open_legacy_button = tk.Button(others_tab, text="Legacy Log Converter", command=open_legacy_log_converter)
     open_legacy_button.pack(anchor=tk.W, padx=20, pady=5)
     add_separator(others_tab)
-
 
     tab_control.pack(expand=1, fill="both")
     app.mainloop()

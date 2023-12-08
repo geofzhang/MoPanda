@@ -1,10 +1,13 @@
 import os
+from datetime import datetime
+
 import pandas as pd
 import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from scipy.optimize import curve_fit
 from tkinter import filedialog, messagebox, Tk, Label, Button, Entry, Text
+import tkinter as tk
 from scipy.interpolate import PchipInterpolator
 from scipy import interpolate
 
@@ -67,59 +70,61 @@ def interpolate_monotonic_capillary_pressure(saturation_data, capillary_pressure
 
 
 class RelPerm:
-    def __init__(self, root):
-        self.root = root
-        root.title("Relative Permeability Calculator")
+    def __init__(self, master):
+        self.root = tk.Toplevel(master)
+        self.root.title("Relative Permeability Calculator")
+
         self.max_cp = 41  # in psi
         self.sgt = 0.3  # trapped/residual gas saturation
         self.pe_ratio = None
 
         # GUI part of the init
         self.filename = ""
-        self.textbox = Text(root, wrap="none", height=1, width=40)
+        self.textbox = Text(self.root, wrap="none", height=1, width=40)
         self.textbox.grid(row=0, column=0, columnspan=2, padx=10, pady=10)
 
-        self.load_button = Button(root, text="Load MICP Data File", command=self.load_file)
+        self.load_button = Button(self.root, text="Load MICP Data File", command=self.load_file)
         self.load_button.grid(row=0, column=2, padx=10, pady=10)
 
-        self.param_textbox = Text(root, wrap="none", height=1, width=40)
+        self.param_textbox = Text(self.root, wrap="none", height=1, width=40)
         self.param_textbox.grid(row=1, column=0, columnspan=2, padx=10, pady=10)
 
-        self.param_load_button = Button(root, text="Load MICP Parameter File", command=lambda: self.load_file('param'))
+        self.param_load_button = Button(self.root, text="Load MICP Parameter File", command=lambda: self.load_file('param'))
         self.param_load_button.grid(row=1, column=2, padx=10, pady=10)
 
-        self.pe_lab_label = Label(root, text=r"Enter the Lab Entry Pressure Pe_lab (psi):")
+        self.pe_lab_label = Label(self.root, text=r"Enter the Lab Entry Pressure Pe_lab (psi):")
         self.pe_lab_label.grid(row=2, column=0, padx=10, pady=10)
-        self.pe_lab_entry = Entry(root)
+        self.pe_lab_entry = Entry(self.root)
         self.pe_lab_entry.grid(row=2, column=2, padx=10, pady=10)
 
-        self.pe_res_label = Label(root, text=r"Enter the Reservoir Entry Pressure Pe_res (psi):")
+        self.pe_res_label = Label(self.root, text=r"Enter the Reservoir Entry Pressure Pe_res (psi):")
         self.pe_res_label.grid(row=3, column=0, padx=10, pady=10)
-        self.pe_res_entry = Entry(root)
+        self.pe_res_entry = Entry(self.root)
         self.pe_res_entry.grid(row=3, column=2, padx=10, pady=10)
 
-        self.cp_label = Label(root, text=r"Enter the Capillary Pressure Cap (psi):")
+        self.cp_label = Label(self.root, text=r"Enter the Capillary Pressure Cap (psi):")
         self.cp_label.grid(row=4, column=0, padx=10, pady=10)
-        self.cp_entry = Entry(root)
+        self.cp_entry = Entry(self.root)
         self.cp_entry.grid(row=4, column=2, padx=10, pady=10)
         self.cp_entry.insert(0, "41")  # Inserting default value
 
         # Label and Entry for Trapped CO2 Saturation
-        self.sgt_max_label = Label(root, text=r"Enter the Maximum Trapped CO2 Saturation:")
+        self.sgt_max_label = Label(self.root, text=r"Enter the Maximum Trapped CO2 Saturation:")
         self.sgt_max_label.grid(row=5, column=0, padx=10, pady=10)
-        self.sgt_max_entry = Entry(root)
+        self.sgt_max_entry = Entry(self.root)
         self.sgt_max_entry.grid(row=5, column=2, padx=10, pady=10)
         self.sgt_max_entry.insert(0, "0.3")  # Inserting default value
 
         # Label and Entry for Maximum Rel k for water
-        self.krw_i_max_label = Label(root, text=r"Enter the Rel-k of Water @ Trapped Gas:")
+        self.krw_i_max_label = Label(self.root, text=r"Enter the Rel-k of Water @ Trapped Gas:")
         self.krw_i_max_label.grid(row=6, column=0, padx=10, pady=10)
-        self.krw_i_max_entry = Entry(root)
+        self.krw_i_max_entry = Entry(self.root)
         self.krw_i_max_entry.grid(row=6, column=2, padx=10, pady=10)
         self.krw_i_max_entry.insert(0, "0.3")  # Inserting default value
 
-        self.submit_button = Button(root, text="Submit", command=self.process_file)
+        self.submit_button = Button(self.root, text="Submit", command=self.process_file)
         self.submit_button.grid(row=7, column=2, columnspan=1, padx=10, pady=10)
+
 
     def update_entries(self):
         if hasattr(self, 'param_filename') and hasattr(self, 'sample_name'):
@@ -219,7 +224,6 @@ class RelPerm:
         Y_i = df_copy_i['Capillary Pressure_Reservoir (MPa)']
         X_i = df_copy_i['Normalized Wetting-phase Saturation_imbibition']
 
-        print(df_copy_i)
         popt_d, _ = curve_fit(fit_function, X_d, Y_d)
         a1 = popt_d[0]
 
@@ -268,14 +272,20 @@ class RelPerm:
         # Add the interpolated capillary pressure values to the 'new_df' DataFrame
         new_df['Interpolated_Capillary_Pressure'] = new_capillary_pressure_values
 
-        # new_df['Interpolated_Capillary_Pressure'] = interpolate_capillary_pressure(existing_saturation_data,
-        #                                                                            existing_capillary_pressure_data,
-        #                                                                            new_saturation_values)
+        # Output directory for saving the Excel/CSV file
+        output_dir = './output/Rel-k/'
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+        current_time = datetime.now().strftime('%m%d%H%M')
+
+        # Construct the output file path
+        output_file_path = os.path.join(output_dir, self.sample_name + '_Rel-k_' + current_time + '.xlsx')
 
         # Save the original DataFrame to one sheet and new_df to another sheet in the same Excel file
-        with pd.ExcelWriter(self.filename, engine='openpyxl', mode='a', if_sheet_exists='replace') as writer:
+        with pd.ExcelWriter(output_file_path, engine='openpyxl', mode='w') as writer:
             df.to_excel(writer, sheet_name='Original_Data', index=False)
             new_df.to_excel(writer, sheet_name='Processed_Data', index=False)
+        messagebox.showinfo("Success", f"Data processed and saved to {output_file_path}")
 
         # Plot the curves
         # Create figure and axis objects
@@ -290,15 +300,17 @@ class RelPerm:
             # Manually set y-axis tick labels in scientific notation
             ax1.yaxis.set_major_locator(matplotlib.ticker.LogLocator(base=10, numticks=15))
             ax1.yaxis.offsetText.set_visible(False)  # Hide the offset text
-            ax1.set_ylim(10**-5, 1)
+            ax1.set_ylim(10 ** -5, 1)
         else:
             ax1.set_ylim(0, 1)
 
         # Plot the data with appropriate line styles and labels
         line1, = ax1.plot(Xd, new_df['krw_d'], label=r'$k_{rb}$' + '_drainage', color='#0C5DA5', ls='-', linewidth=3)
-        line2, = ax1.plot(Xd, new_df['krg_d'], label=r'$k_{rCO_{2}}$' + '_drainage', color='#FF2C00', ls='-', linewidth=3)
+        line2, = ax1.plot(Xd, new_df['krg_d'], label=r'$k_{rCO_{2}}$' + '_drainage', color='#FF2C00', ls='-',
+                          linewidth=3)
         line3, = ax1.plot(Xi, new_df['krw_i'], label=r'$k_{rb}$' + '_imbibition', color='#0C5DA5', ls='--', linewidth=3)
-        line4, = ax1.plot(Xi, new_df['krg_i'], label=r'$k_{rCO_{2}}$' + '_imbibition', color='#FF2C00', ls='--', linewidth=3)
+        line4, = ax1.plot(Xi, new_df['krg_i'], label=r'$k_{rCO_{2}}$' + '_imbibition', color='#FF2C00', ls='--',
+                          linewidth=3)
 
         ax1.set_xlabel('Brine Saturation (fraction)', fontsize=14, fontweight='bold')
         ax1.set_ylabel('Relative Permeability (fraction)', fontsize=14, fontweight='bold')
@@ -325,7 +337,7 @@ class RelPerm:
         ax2.tick_params(axis='both', labelsize=12)  # Set tick label size to 12
         # plt.title(f'Relative Permeability Curves for Sample {self.sample_name}')
         # Saving the figure with 300 dpi
-        output_dir = '../output/Rel-k/'
+        output_dir = './output/Rel-k/'
         if not os.path.exists(output_dir):
             # If not, create the directory
             os.makedirs(output_dir)
@@ -335,6 +347,5 @@ class RelPerm:
         plt.show()
 
 
-root = Tk()
-my_app = RelPerm(root)
-root.mainloop()
+if __name__ == "__main__":
+    my_app = RelPerm

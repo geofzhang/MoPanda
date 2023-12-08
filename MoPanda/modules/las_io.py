@@ -1,13 +1,11 @@
 import os
-import os
 import xml.etree.ElementTree as ET
 from tkinter import messagebox
-
+import webbrowser
 import numpy as np
 import pandas as pd
 from lasio import LASFile
 from scipy.optimize import nnls
-
 from modules.utils import check_file
 
 
@@ -799,8 +797,21 @@ class LasIO(LASFile):
             csv_path = os.path.join(local_path, '../data/calculation_pars', 'multimineral_parameters.csv')
 
         df = pd.read_csv(csv_path)
-        df = df.set_index('name')
 
+        # Check for duplicate names
+        if df['name'].duplicated().any():
+            # Show a warning message
+            messagebox.showwarning("Duplicate Names Found",
+                                   "Duplicate names found in the CSV. Please modify the CSV to have unique names.")
+
+            # Open the CSV file for the user to modify
+            try:
+                webbrowser.open(csv_path)
+            except Exception as e:
+                messagebox.showerror("Error", f"Error opening the file: {e}")
+            return  # Exit the method
+
+        df = df.set_index('name')
         self.multimineral_parameters = df.to_dict(orient='index')
 
     def multimineral_model(self, top=None, bottom=None,

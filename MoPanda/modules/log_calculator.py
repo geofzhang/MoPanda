@@ -137,8 +137,7 @@ class LogCalculator(tk.Frame):
 
         # Output Separator
         ttk.Separator(self, orient="horizontal").grid(row=10, column=0, columnspan=4, sticky="ew", padx=10, pady=5)
-
-        self.output_files = tk.BooleanVar(value=True)
+        self.output_files = tk.BooleanVar(value=False)
         self.output_files_checkbox = tk.Checkbutton(self, text="Export output files",
                                                     variable=self.output_files,
                                                     command=self.toggle_output_files_checkbox)
@@ -151,9 +150,13 @@ class LogCalculator(tk.Frame):
         self.output_files_options = ['.las', '.csv', '.xlsx']
         for idx, option in enumerate(self.output_files_options):
             self.output_files_listbox.insert(tk.END, option)
-            if option == '.las':
-                self.output_files_listbox.select_set(idx)  # Set default selection to .las
+
+        # Set default selection to .las directly during initialization
+        default_index = self.output_files_options.index('.las')
+
         self.output_files_listbox.config(state=tk.NORMAL)
+
+        self.output_files_listbox.select_set(default_index)
 
         tk.Label(self, text="Select output format (default .las):").grid(row=11, column=2, padx=10, pady=5)
 
@@ -235,6 +238,9 @@ class LogCalculator(tk.Frame):
         # Check if both LAS and tops files are loaded, then enable the "Select Formations" button
         if las_file_path and self.tops_file_path.get():
             self.select_formations_button.config(state=tk.NORMAL)
+
+        self.output_files.set(True)
+        self.toggle_output_files_checkbox()
 
     def load_tops_file(self, tops_file_path, load_file_path):
         # Load tops using LasIO
@@ -333,7 +339,7 @@ class LogCalculator(tk.Frame):
         self.clustering_methods = ['kmeans']
         self.cluster_range = (5, 20)
         self.clustering_params = {
-            'kmeans': {'n_clusters': 15, 'n_init': 3},
+            'kmeans': {'n_clusters': 12, 'n_init': 3},
             'dbscan': {'eps': 0.8, 'min_samples': 8},
             'affinity': {'random_state': 20, 'affinity': 'euclidean'},
             'optics': {'min_samples': 20, 'max_eps': 0.5, 'xi': 0.05},
@@ -475,6 +481,7 @@ class LogCalculator(tk.Frame):
 
                 # Update the clustering_methods attribute with the selected methods
                 self.clustering_methods = get_selected_clustering_methods()
+                print("params", self.clustering_params)
 
                 # Close the configuration window
                 electrofacies_config_window.destroy()
@@ -607,6 +614,7 @@ class LogCalculator(tk.Frame):
             # Use these parameters for electrofacies calculation
             n_components = self.n_components
             clustering_methods = self.clustering_methods
+            print(clustering_methods)
             print("params", self.clustering_params)
             cluster_range = self.cluster_range
             clustering_params = self.clustering_params

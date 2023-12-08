@@ -9,33 +9,104 @@ from modules.graphs import LogViewer
 from modules.las_io import LasIO
 
 
-def scoping(input_folder_var, masking_var, gr_filter_var):
-    # Default values for the variables
-    start_depth = 3000
-    end_depth = 4000
-    salinity_limit = 10000
-    phi_limit = 0.15
-    gr_limit = 80
-    masking = {
-        'status': False,
-        'mode': 'white',
-        'facies_to_drop': [],
-        'curves_to_mask': [],
-    }
 
-    class MissingLogException(Exception):
-        pass
+class MaskingForScoping:
+    def __init__(self, master, input_folder_var, masking_var, gr_filter_var):
+        self.master = master
+        self.input_folder_var = input_folder_var
+        self.masking_var = masking_var
+        self.gr_filter_var = gr_filter_var
 
-    def scoping_viewer():
+        # Setting the window title and geometry
+        self.master.title("Scoping")
+        self.master.geometry("400x600")  # Adjust size as needed
+
+        # Default values
+        self.start_depth = 3000
+        self.end_depth = 4000
+        self.salinity_limit = 10000
+        self.phi_limit = 0.15
+        self.gr_limit = 80
+        self.masking = {
+            'status': False,
+            'mode': 'white',
+            'facies_to_drop': [],
+            'curves_to_mask': [],
+        }
+
+        # Initialize the GUI components
+        self.init_gui()
+
+    def init_gui(self):
+        # Labels and Entry fields
+
+        # Input Folder Entry
+        tk.Label(self.master, text="Input Folder:").grid(row=0, column=0, sticky="e")
+        self.input_folder_entry = tk.Entry(self.master, textvariable=self.input_folder_var, state='readonly')
+        self.input_folder_entry.grid(row=0, column=1, columnspan=2, padx=5, pady=5, sticky='we')
+        # Button for selecting input folder
+        self.folder_select_button = tk.Button(self.master, text="Select Folder", command=self.select_input_folder)
+        self.folder_select_button.grid(row=0, column=2, padx=5, pady=5)
+
+        tk.Label(self.master, text="Start Depth:").grid(row=1, column=0, sticky="e")
+        self.start_depth_entry = tk.Entry(self.master)
+        self.start_depth_entry.grid(row=1, column=1)
+        self.start_depth_entry.insert(0, str(self.start_depth))
+
+        tk.Label(self.master, text="End Depth:").grid(row=2, column=0, sticky="e")
+        self.end_depth_entry = tk.Entry(self.master)
+        self.end_depth_entry.grid(row=2, column=1)
+        self.end_depth_entry.insert(0, str(self.end_depth))
+
+        tk.Label(self.master, text="Salinity Limit:").grid(row=3, column=0, sticky="e")
+        self.salinity_limit_entry = tk.Entry(self.master)
+        self.salinity_limit_entry.grid(row=3, column=1)
+        self.salinity_limit_entry.insert(0, str(self.salinity_limit))
+
+        tk.Label(self.master, text="Porosity Limit:").grid(row=4, column=0, sticky="e")
+        self.phi_limit_entry = tk.Entry(self.master)
+        self.phi_limit_entry.grid(row=4, column=1)
+        self.phi_limit_entry.insert(0, str(self.phi_limit))
+
+        tk.Label(self.master, text="Gamma Ray Limit:").grid(row=5, column=0, sticky="e")
+        self.gr_limit_entry = tk.Entry(self.master)
+        self.gr_limit_entry.grid(row=5, column=1)
+        self.gr_limit_entry.insert(0, str(self.gr_limit))
+
+        # Checkbuttons
+        tk.Label(self.master, text="Masking:").grid(row=6, column=0, sticky="e")
+        self.masking_check = tk.Checkbutton(self.master, variable=self.masking_var)
+        self.masking_check.grid(row=6, column=1)
+
+        tk.Label(self.master, text="Gamma Ray Filter:").grid(row=7, column=0, sticky="e")
+        self.gr_filter_check = tk.Checkbutton(self.master, variable=self.gr_filter_var)
+        self.gr_filter_check.grid(row=7, column=1)
+
+        # Buttons
+        self.process_button = tk.Button(self.master, text="Process LAS Files", command=self.process_las_files)
+        self.process_button.grid(row=8, column=1, columnspan=2, pady=10)
+
+        self.simple_viewer_button = tk.Button(self.master, text="Simple Scoping Log Viewer", command=self.simple_scoping_viewer)
+        self.simple_viewer_button.grid(row=9, column=1, columnspan=2, pady=10)
+
+        self.scoping_viewer_button = tk.Button(self.master, text="Scoping Log Viewer", command=self.scoping_viewer)
+        self.scoping_viewer_button.grid(row=10, column=1, columnspan=2, pady=10)
+
+    def select_input_folder(self):
+        # Open a dialog to select a folder, and update the input_folder_var
+        folder_selected = filedialog.askdirectory()
+        if folder_selected:  # Check if a folder was selected
+            self.input_folder_var.set(folder_selected)
+    def scoping_viewer(self):
         file_path = filedialog.askopenfilename(filetypes=[("LAS Files", "*.las")])
         if file_path:
             log = LasIO(file_path)
             print(log.curves)
             # Display the log using the Scoping template defaults
-            viewer = LogViewer(log, template_defaults='scoping', top=start_depth, height=1000, masking=masking)
+            viewer = LogViewer(log, template_defaults='scoping', top=self.start_depth, height=1000, masking=self.masking)
             viewer.show()
 
-    def simple_scoping_viewer():
+    def simple_scoping_viewer(self):
         file_path = filedialog.askopenfilename(filetypes=[("LAS Files", "*.las")])
         if file_path:
             log = LasIO(file_path)
@@ -52,7 +123,7 @@ def scoping(input_folder_var, masking_var, gr_filter_var):
             well_name = well_name.replace('.', '')
 
             # Display the log using the Scoping template defaults
-            viewer = LogViewer(log, template_defaults='scoping_simple', top=start_depth, height=1000, masking=masking)
+            viewer = LogViewer(log, template_defaults='scoping_simple', top=self.start_depth, height=1000, masking=self.masking)
             viewer.fig.set_size_inches(8, 11)
 
             viewer.fig.suptitle(well_name, fontweight='bold', fontsize=14)
@@ -66,7 +137,7 @@ def scoping(input_folder_var, masking_var, gr_filter_var):
 
             viewer.show()
 
-    def scoping(log, start_depth, end_depth, gr_filter):
+    def scoping(self, log, start_depth, end_depth, gr_filter):
         # Auto turning off GR filter
         if 'SGR_N' not in log.curves:
             gr_filter = False
@@ -92,20 +163,20 @@ def scoping(input_folder_var, masking_var, gr_filter_var):
         data[:] = np.nan
         if gr_filter:
             depth_index = df.loc[
-                (df['SALINITY_N'] > salinity_limit) & (df['POR_N'] > phi_limit) & (
-                        df['SGR_N'] < gr_limit), 'DEPTH_INDEX']
+                (df['SALINITY_N'] > self.salinity_limit) & (df['POR_N'] > self.phi_limit) & (
+                        df['SGR_N'] < self.gr_limit), 'DEPTH_INDEX']
             for curve in target_logs.append('SGR_N'):
-                data[depth_index] = df.loc[(df['SALINITY_N'] > salinity_limit) & (df['POR_N'] > phi_limit), curve]
+                data[depth_index] = df.loc[(df['SALINITY_N'] > self.salinity_limit) & (df['POR_N'] > self.phi_limit), curve]
                 log.append_curve(
                     f'{curve}_MASKED',
                     np.copy(data),
                     descr=f'Masked {curve}',
                 )
         else:
-            depth_index = df.loc[(df['SALINITY_N'] > salinity_limit) & (df['POR_N'] > phi_limit), 'DEPTH_INDEX']
+            depth_index = df.loc[(df['SALINITY_N'] > self.salinity_limit) & (df['POR_N'] > self.phi_limit), 'DEPTH_INDEX']
             print(depth_index)
             for curve in target_logs:
-                data[depth_index] = df.loc[(df['SALINITY_N'] > salinity_limit) & (df['POR_N'] > phi_limit), curve]
+                data[depth_index] = df.loc[(df['SALINITY_N'] > self.salinity_limit) & (df['POR_N'] > self.phi_limit), curve]
                 log.append_curve(
                     f'{curve}MASKED',
                     np.copy(data),
@@ -114,10 +185,15 @@ def scoping(input_folder_var, masking_var, gr_filter_var):
 
         return log
 
-    def process_las_files():
-        global masking, gr_filter  # Declare the variables as global within the function
-        masking = tk.BooleanVar(value=True)
-        gr_filter = tk.BooleanVar(value=False)
+    def process_las_files(self):
+        # Update parameters based on user input from the GUI
+        self.start_depth = int(self.start_depth_entry.get())
+        self.end_depth = int(self.end_depth_entry.get())
+        self.salinity_limit = int(self.salinity_limit_entry.get())
+        self.phi_limit = float(self.phi_limit_entry.get())
+        self.gr_limit = int(self.gr_limit_entry.get())
+        self.masking = self.masking_var.get()
+        self.gr_filter = self.gr_filter_var.get()
 
         # Get user-selected input folder
         input_folder = filedialog.askdirectory(title="Select Input Folder")
@@ -125,100 +201,34 @@ def scoping(input_folder_var, masking_var, gr_filter_var):
             messagebox.showwarning("Warning", "Please select an input folder.")
             return
 
+        # Prepare the output folder
         output_folder = os.path.join(os.path.dirname(input_folder), 'Scoped wells', os.path.basename(input_folder))
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
 
-        # Get user-selected values from the GUI
-        global start_depth, end_depth, salinity_limit, phi_limit, gr_limit
-        start_depth = int(start_depth_entry.get())
-        end_depth = int(end_depth_entry.get())
-        salinity_limit = int(salinity_limit_entry.get())
-        phi_limit = float(phi_limit_entry.get())
-        gr_limit = int(gr_limit_entry.get())
-        masking = masking_var.get()
-        gr_filter = gr_filter_var.get()
-
+        # Process each LAS file in the input folder
         for root, _, files in os.walk(input_folder):
             for file in files:
                 if file.endswith(".las"):
-                    las_file_path = os.path.join(root, file)
-                    log = LasIO(las_file_path)
-                    if masking:
-                        log = scoping(log, start_depth, end_depth, gr_filter)
+                    try:
+                        las_file_path = os.path.join(root, file)
+                        log = LasIO(las_file_path)
 
-                    if 'SALINITY_N' in log.curves and 'POR_N' in log.curves:
-                        relative_path = os.path.relpath(las_file_path, input_folder)
-                        destination_folder = os.path.join(output_folder, os.path.dirname(relative_path))
-                        if not os.path.exists(destination_folder):
-                            os.makedirs(destination_folder)
-                        destination_file = os.path.join(destination_folder, file)
-                        log.write(destination_file, mnemonics_header=True, data_section_header="~A")
+                        # Apply masking and filtering if enabled
+                        if self.masking:
+                            log = self.scoping(log, self.start_depth, self.end_depth, self.gr_filter)
+
+                        # Check for necessary curves
+                        if 'SALINITY_N' in log.curves and 'POR_N' in log.curves:
+                            relative_path = os.path.relpath(las_file_path, input_folder)
+                            destination_folder = os.path.join(output_folder, os.path.dirname(relative_path))
+                            if not os.path.exists(destination_folder):
+                                os.makedirs(destination_folder)
+                            destination_file = os.path.join(destination_folder, file)
+                            log.write(destination_file, mnemonics_header=True, data_section_header="~A")
+                    except Exception as e:
+                        print(f"Error processing file {file}: {e}")
 
         messagebox.showinfo("Process Complete", "LAS files processing is complete!")
 
-    # Create the GUI
-    root = tk.Tk()
-    root.title("LAS Data Processing")
-    root.geometry("400x400")  # Set the window size to 400x400
 
-    # Labels
-    tk.Label(root, text="Input Folder:").grid(row=0, column=0, sticky="e")
-
-    # Entry fields
-    input_folder_entry = tk.Entry(root, textvariable=input_folder_var, state='readonly')
-    input_folder_entry.grid(row=0, column=1, columnspan=50, padx=5, pady=5, sticky='we')
-
-    tk.Label(root, text="Start Depth:").grid(row=1, column=0, sticky="e")
-    tk.Label(root, text="End Depth:").grid(row=2, column=0, sticky="e")
-    tk.Label(root, text="Salinity Limit:").grid(row=3, column=0, sticky="e")
-    tk.Label(root, text="Porosity Limit:").grid(row=4, column=0, sticky="e")
-    tk.Label(root, text="Gamma Ray Limit:").grid(row=5, column=0, sticky="e")
-    tk.Label(root, text="Masking:").grid(row=6, column=0, sticky="e")
-    tk.Label(root, text="Gamma Ray Filter:").grid(row=7, column=0, sticky="e")
-
-    # Entry fields
-    start_depth_entry = tk.Entry(root)
-    start_depth_entry.grid(row=1, column=1)
-    start_depth_entry.insert(0, str(start_depth))
-
-    end_depth_entry = tk.Entry(root)
-    end_depth_entry.grid(row=2, column=1)
-    end_depth_entry.insert(0, str(end_depth))
-
-    salinity_limit_entry = tk.Entry(root)
-    salinity_limit_entry.grid(row=3, column=1)
-    salinity_limit_entry.insert(0, str(salinity_limit))
-
-    phi_limit_entry = tk.Entry(root)
-    phi_limit_entry.grid(row=4, column=1)
-    phi_limit_entry.insert(0, str(phi_limit))
-
-    gr_limit_entry = tk.Entry(root)
-    gr_limit_entry.grid(row=5, column=1)
-    gr_limit_entry.insert(0, str(gr_limit))
-
-    # Set default value for masking_var
-    masking_var.set(True)
-    # Checkbuttons
-    masking_check = tk.Checkbutton(root, variable=masking_var)
-    # Link masking_var to the check button
-    masking_check.config(variable=masking_var)
-    masking_check.grid(row=6, column=1)
-
-    gr_filter_check = tk.Checkbutton(root, variable=gr_filter_var)
-    gr_filter_check.grid(row=7, column=1)
-
-    # Process button
-    process_button = tk.Button(root, text="Process LAS Files", command=process_las_files)
-    process_button.grid(row=8, column=1, columnspan=3, pady=10)
-
-    # Simple Scoping Log Viewer button
-    simple_viewer_button = tk.Button(root, text="Simple Scoping Log Viewer", command=simple_scoping_viewer)
-    simple_viewer_button.grid(row=9, column=1, columnspan=3, pady=10)
-
-    # Scoping Log Viewer button
-    scoping_viewer_button = tk.Button(root, text="Scoping Log Viewer", command=scoping_viewer)
-    scoping_viewer_button.grid(row=10, column=1, columnspan=3, pady=10)
-
-    root.mainloop()

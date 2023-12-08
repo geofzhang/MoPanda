@@ -7,7 +7,7 @@ import os
 
 def load_lithology_correction_curves():
     curves = {}
-    folder_path = "../data/chartbook/SNL2NPHI/"
+    folder_path = "../data/chartbook/NEUT2NPHI/"
 
     if not os.path.exists(folder_path):
         sg.popup_error(f"Curve folder '{folder_path}' not found. Please check the folder location.")
