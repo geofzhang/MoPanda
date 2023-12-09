@@ -645,13 +645,20 @@ class LogCalculator(tk.Frame):
         else:
             well_name = 'UNKNOWN'
         well_name = well_name.replace('.', '')
+        # Construct the directory path
+        output_dir = './output/Petrophysics/'
+
+        # Check if the directory exists, and create it if it doesn't
+        if not os.path.exists(output_dir):
+            print("No Directory, creating...")
+            os.makedirs(output_dir)
 
         # Export converted data (raw) to either .csv or .xlsx
         las_file_name = os.path.splitext(os.path.basename(las_file_path))[0]
         current_time = datetime.now().strftime('%m%d%H%M')
-        excel_output = f'./output/Petrophysics/{las_file_name}_Petrophysics_{current_time}.xlsx'
-        csv_output = f'./output/Petrophysics/{las_file_name}_Petrophysics_{current_time}.csv'
-        las_output = f'./output/Petrophysics/{las_file_name}_Petrophysics_{current_time}.las'
+        excel_output = f'{output_dir}{las_file_name}_Petrophysics_{current_time}.xlsx'
+        csv_output = f'{output_dir}{las_file_name}_Petrophysics_{current_time}.csv'
+        las_output = f'{output_dir}{las_file_name}_Petrophysics_{current_time}.las'
 
         if self.output_files.get():  # If the main checkbox for exporting is checked
             selected_indices = self.output_files_listbox.curselection()  # Returns a tuple of selected item indices
