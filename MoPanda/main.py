@@ -46,12 +46,12 @@ def create_main_gui():
         dlis_viewer()
 
     def open_las_viewer_tab():
-        # Importing the WellLogGUI class here to avoid circular imports
         from modules.las_viewer import WellLogGUI
         WellLogGUI(app)
 
     def open_geomechanics():
-        pass
+        from modules.geomechanics import GeoMechanics
+        GeoMechanics(app)
 
     def open_relk():
         from modules.relk import RelPerm
@@ -61,6 +61,7 @@ def create_main_gui():
         pass
 
     def open_las_editor():
+        # Initialize another thread for las_editor
         # las_editor_thread = LASEditorThread()
         # las_editor_thread.start()
 
