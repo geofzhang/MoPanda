@@ -2,3 +2,4 @@
 MoPanda/data/core/Rel-k/
 MoPanda/output/
 MoPanda/modules/best_model/variables/variables_temp/
+MoPanda/modules/catboost_info/
