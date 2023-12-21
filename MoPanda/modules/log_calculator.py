@@ -84,7 +84,6 @@ class LogCalculator(tk.Frame):
 
         # Fluid Properties Parameter Selection (Combobox)
         self.fluid_properties_params_options = self.load_fluid_properties_params()
-        # self.fluid_properties_params = tk.StringVar()
         self.fluid_properties_params_dropdown = ttk.Combobox(self, values=self.fluid_properties_params_options)
         self.fluid_properties_params_dropdown.grid(row=5, column=3, padx=10, pady=10)
         self.fluid_properties_params_dropdown.set(self.fluid_properties_params_options[0])  # Set default value
@@ -105,7 +104,6 @@ class LogCalculator(tk.Frame):
 
         # Multimineral Parameters Dropdown (initially disabled)
         self.multimineral_params_options = self.load_multimineral_params_options()
-        # self.multimineral_params = tk.StringVar()
         self.multimineral_params_dropdown = ttk.Combobox(self, values=self.multimineral_params_options,
                                                          state=tk.DISABLED)
         self.multimineral_params_dropdown.set(self.multimineral_params_options[0])

@@ -365,7 +365,7 @@ class LogViewer(object):
                 for c, curve in enumerate(track):
                     ### names ###
                     if 'curve_name' in curve.attrib:
-                        if masking.get('status') and curve.attrib['curve_name'] in masking.get('curves_to_mask'):
+                        if self.masking.get('status') and curve.attrib['curve_name'] in self.masking.get('curves_to_mask'):
                             original_name = curve.attrib['curve_name']
                             curve_name = f'{original_name}_masked'
                             print(curve_name)

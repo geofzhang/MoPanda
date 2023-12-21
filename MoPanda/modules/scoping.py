@@ -23,7 +23,7 @@ class MaskingForScoping:
 
         # Default values
         self.start_depth = 3000
-        self.end_depth = 4000
+        self.end_depth = 20000
         self.salinity_limit = 10000
         self.phi_limit = 0.15
         self.gr_limit = 80
@@ -94,9 +94,10 @@ class MaskingForScoping:
 
     def select_input_folder(self):
         # Open a dialog to select a folder, and update the input_folder_var
-        folder_selected = filedialog.askdirectory()
-        if folder_selected:  # Check if a folder was selected
-            self.input_folder_var.set(folder_selected)
+        self.folder_selected = filedialog.askdirectory()
+        if self.folder_selected:  # Check if a folder was selected
+            self.input_folder_var.set(self.folder_selected)
+
     def scoping_viewer(self):
         file_path = filedialog.askopenfilename(filetypes=[("LAS Files", "*.las")])
         if file_path:
@@ -130,7 +131,7 @@ class MaskingForScoping:
 
             # add logo to top left corner #
 
-            logo_im = plt.imread('./logo/ca_logo.png')
+            logo_im = plt.imread('./data/logo/ca_logo.png')
             logo_ax = viewer.fig.add_axes([0, 0.85, 0.2, 0.2])
             logo_ax.imshow(logo_im)
             logo_ax.axis('off')
@@ -138,23 +139,26 @@ class MaskingForScoping:
             viewer.show()
 
     def scoping(self, log, start_depth, end_depth, gr_filter):
-        # Auto turning off GR filter
-        if 'SGR_N' not in log.curves:
-            gr_filter = False
 
         # Target logs
         target_logs = ['SALINITY_N', 'POR_N']
+
         # qc the logs within assigned depth interval
         # log.log_qc(start_depth, end_depth)
 
         # Auto aliasing log names
         log.aliasing()
 
+        # Auto turning off GR filter
+        if 'SGR_N' not in log.curves:
+            gr_filter = False
+
         # Calculate formation fluid property parameters
         log.load_fluid_properties()
         log.formation_fluid_properties(top=start_depth, bottom=end_depth, parameter='default')
 
-        # print(log.curves)
+        # Auto aliasing log names again for future use
+        log.aliasing()
 
         df = log.df()
         df['DEPTH_INDEX'] = np.arange(0, len(log[0]))
@@ -165,8 +169,10 @@ class MaskingForScoping:
             depth_index = df.loc[
                 (df['SALINITY_N'] > self.salinity_limit) & (df['POR_N'] > self.phi_limit) & (
                         df['SGR_N'] < self.gr_limit), 'DEPTH_INDEX']
-            for curve in target_logs.append('SGR_N'):
-                data[depth_index] = df.loc[(df['SALINITY_N'] > self.salinity_limit) & (df['POR_N'] > self.phi_limit), curve]
+            target_logs.append('SGR_N')
+            for curve in target_logs:
+                data[depth_index] = df.loc[(df['SALINITY_N'] > self.salinity_limit) & (df['POR_N'] > self.phi_limit)& (
+                        df['SGR_N'] < self.gr_limit), curve]
                 log.append_curve(
                     f'{curve}_MASKED',
                     np.copy(data),
@@ -174,11 +180,10 @@ class MaskingForScoping:
                 )
         else:
             depth_index = df.loc[(df['SALINITY_N'] > self.salinity_limit) & (df['POR_N'] > self.phi_limit), 'DEPTH_INDEX']
-            print(depth_index)
             for curve in target_logs:
                 data[depth_index] = df.loc[(df['SALINITY_N'] > self.salinity_limit) & (df['POR_N'] > self.phi_limit), curve]
                 log.append_curve(
-                    f'{curve}MASKED',
+                    f'{curve}_MASKED',
                     np.copy(data),
                     descr=f'Masked {curve}',
                 )
@@ -192,11 +197,11 @@ class MaskingForScoping:
         self.salinity_limit = int(self.salinity_limit_entry.get())
         self.phi_limit = float(self.phi_limit_entry.get())
         self.gr_limit = int(self.gr_limit_entry.get())
-        self.masking = self.masking_var.get()
+        self.masking['status'] = self.masking_var.get()
         self.gr_filter = self.gr_filter_var.get()
 
         # Get user-selected input folder
-        input_folder = filedialog.askdirectory(title="Select Input Folder")
+        input_folder = self.folder_selected
         if not input_folder:
             messagebox.showwarning("Warning", "Please select an input folder.")
             return
@@ -215,7 +220,7 @@ class MaskingForScoping:
                         log = LasIO(las_file_path)
 
                         # Apply masking and filtering if enabled
-                        if self.masking:
+                        if self.masking.get('status'):
                             log = self.scoping(log, self.start_depth, self.end_depth, self.gr_filter)
 
                         # Check for necessary curves

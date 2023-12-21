@@ -1,6 +1,7 @@
 import os
+import subprocess
 import tkinter as tk
-from tkinter import ttk
+from tkinter import ttk, messagebox
 import sys
 import threading
 
@@ -26,6 +27,52 @@ class LASEditorThread(threading.Thread):
         if self.app:
             self.app.quit()
 
+def check_for_updates():
+    try:
+        # Fetch the latest changes from the remote repository
+        subprocess.run(["git", "fetch"], check=True)
+
+        # Compare local HEAD with remote HEAD
+        local_head = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, check=True).stdout
+        remote_head = subprocess.run(["git", "rev-parse", "origin/main"], capture_output=True, check=True).stdout
+
+        return local_head != remote_head
+    except subprocess.CalledProcessError as e:
+        print(f"Error checking for updates: {e}")
+        return False
+
+def update_application():
+    try:
+        # Fetch the latest changes from the remote repository
+        subprocess.run(["git", "fetch"], check=True)
+
+        # Pull updates with sparse-checkout configuration
+        subprocess.run(["git", "pull", "origin", "main"], check=True)
+
+        print("Application updated successfully.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error updating the application: {e}")
+
+def show_welcome_window():
+    def on_close():
+        if check_for_updates():
+            user_choice = messagebox.askyesno("Update Available", "An update is available. Do you want to update now?")
+            if user_choice:
+                update_application()
+        welcome_window.destroy()
+
+    welcome_window = tk.Tk()
+    welcome_window.title("Welcome")
+
+    update_message = "An update is available!" if check_for_updates() else ""
+    welcome_text = f"Welcome to MoPanda!\nModular Petrophysics and Data Analysis Tool\n{update_message}"
+    message = tk.Label(welcome_window, text=welcome_text)
+    message.pack(padx=20, pady=20)
+
+    close_button = tk.Button(welcome_window, text="Continue", command=on_close)
+    close_button.pack(pady=10)
+
+    welcome_window.mainloop()
 
 # Function to create a GUI with tabs
 def create_main_gui():
@@ -253,4 +300,5 @@ def create_main_gui():
 
 
 if __name__ == "__main__":
+    show_welcome_window()
     create_main_gui()
